@@ -2,7 +2,13 @@ package org.firstinspires.ftc.teamcode.teleop;
 
 import android.util.Size;
 
+import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
+import com.acmerobotics.roadrunner.Pose2d;
 import com.pedropathing.util.Timer;
+import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.LLResultTypes;
+import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DigitalChannel;
@@ -18,42 +24,35 @@ import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 import org.firstinspires.ftc.teamcode.Subsystems.flywheelSub;
 import org.firstinspires.ftc.teamcode.Subsystems.hardwareSubNewBot;
 import org.firstinspires.ftc.teamcode.Subsystems.varSub;
+import org.firstinspires.ftc.teamcode.roadrunner.Drawing;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.opencv.ImageRegion;
 import org.firstinspires.ftc.vision.opencv.PredominantColorProcessor;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @TeleOp(name = "ColorCamera 2 shoot while move")
 public class teleop extends LinearOpMode {
     private final ElapsedTime timer = new ElapsedTime();
     private Timer endgameTimer;
-    private boolean lastResult = false;
-    private int falseCount = 0;
-    private int successStreak = 0;
-    private double probabilityOfStreak = 1.0;
-    private boolean lastBumperState = false; // For rising-edge detection
 
-    // 1/6 chance is approximately 0.1667
-    private final double SUCCESS_CHANCE = 1.0 / 6.0;
     public hardwareSubNewBot h;
     public varSub v;
-    public flywheelSub fly; // <-- Added the new subsystem here
-    public Timer swingTimer;
+    public flywheelSub fly;
 
-    // --- PTO Control Variables (already a good state machine, kept as is) ---
-    private boolean ptoButtonWasPressed = false; // For debouncing the gamepad button
-    private boolean ptoIsEngaged = false;           // True if PTO is "on", false if "off"
+    // Limelight setup
+    private Limelight3A limelight;
+
+    // PTO State Machine
+    private boolean ptoButtonWasPressed = false;
+    private boolean ptoIsEngaged = false;
     private final ElapsedTime ptoDeploymentTimer = new ElapsedTime();
     private PtoDeploymentState currentPtoDeploymentState = PtoDeploymentState.RETRACTED;
 
     enum PtoDeploymentState {
-        RETRACTED,
-        DEPLOYING_R_SERVO,
-        WAITING_FOR_DEPLOY_DELAY,
-        DEPLOYING_L_SERVO,
-        ENGAGED,
-        RETRACTING_L_SERVO,
-        WAITING_FOR_RETRACT_DELAY,
-        RETRACTING_R_SERVO
+        RETRACTED, DEPLOYING_R_SERVO, WAITING_FOR_DEPLOY_DELAY, DEPLOYING_L_SERVO,
+        ENGAGED, RETRACTING_L_SERVO, WAITING_FOR_RETRACT_DELAY, RETRACTING_R_SERVO
     }
 
     private static final double PTO_R_RETRACTED_POSITION = 1.0;
@@ -61,100 +60,119 @@ public class teleop extends LinearOpMode {
     private static final double PTO_R_ENGAGED_POSITION = 0.25;
     private static final double PTO_L_ENGAGED_POSITION = 0.25;
     private static final long PTO_DEPLOYMENT_DELAY_MS = 500;
-    // --- END PTO Control Variables ---
 
-
-    // --- NEW Intake Control Variables (State Machine for Intake and related components) ---
+    // Intake State Machine
     private IntakeState currentIntakeState = IntakeState.IDLE;
     private final ElapsedTime intakeStateTimer = new ElapsedTime();
-    private int cycleSubStep = 0; // Used for multi-step cycles like single-note and till-color
+    private int cycleSubStep = 0;
+
+    // Tracks active sorting routine without blocking the main loop
+    private int activeSortingMotif = 0;
 
     enum IntakeState {
-        IDLE,
-        MANUAL_TRIGGERS_ACTIVE, // User holding triggers for intake/outtake
-        GATE_MANUAL_CONTROL,    // User holding dpad for gate position
-
-        SINGLE_NOTE_CYCLE_INIT,     // Triggered by dpad_left
-        SINGLE_NOTE_CYCLE_STEP_1,   // Sickle out, swing down, gate open
-        SINGLE_NOTE_CYCLE_STEP_2,   // Intake/Indexer on
-        SINGLE_NOTE_CYCLE_STEP_3,   // Sickle to 0.9
-        SINGLE_NOTE_CYCLE_STEP_4,   // Gate to 0.85, swing to 0.2, intake off
-        SINGLE_NOTE_CYCLE_STEP_5,   // Intake 0.5, Indexer -1
-        SINGLE_NOTE_CYCLE_STEP_6,   // Indexer 1
-        SINGLE_NOTE_CYCLE_STEP_7,   // Gate to 0.65, Indexer off, Swing to 0.55, Intake -1
-        SINGLE_NOTE_CYCLE_STEP_8,   // Intake off, cycle complete
-
-        FIRING,                     // Triggered by right_bumper
-        FIRING_COMPLETE,            // Short delay after firing
-
-        INTAKE_TILL_FULL_INIT,      // Triggered by gamepad1.ps
-        INTAKE_TILL_FULL_RUNNING,   // Actively intaking until sensors are full
-
-        // Specific flags for which color processor to use during INTAKE_TILL_COLOR_RUNNING
-        INTAKE_TILL_PPG, // right_stick_button
-        INTAKE_TILL_PGP, // left_stick_button
-        INTAKE_TILL_GPP  // left_stick_button && right_stick_button
+        IDLE, MANUAL_TRIGGERS_ACTIVE, GATE_MANUAL_CONTROL,
+        SINGLE_NOTE_CYCLE_INIT, SINGLE_NOTE_CYCLE_STEP_1, SINGLE_NOTE_CYCLE_STEP_2,
+        SINGLE_NOTE_CYCLE_STEP_3, SINGLE_NOTE_CYCLE_STEP_4, SINGLE_NOTE_CYCLE_STEP_5,
+        SINGLE_NOTE_CYCLE_STEP_6, SINGLE_NOTE_CYCLE_STEP_7, SINGLE_NOTE_CYCLE_STEP_8,
+        FIRING, FIRING_COMPLETE, INTAKE_TILL_FULL_INIT, INTAKE_TILL_FULL_RUNNING,
+        INTAKE_TILL_PPG, INTAKE_TILL_PGP, INTAKE_TILL_GPP
     }
 
-    // Debounce variables for intake controls (gamepad1)
+    // Input debouncing
     private boolean dpadLeftWasPressed = false;
     private boolean psWasPressed = false;
     private boolean rightBumperWasPressed = false;
     private boolean leftStickButtonWasPressed = false;
-    private boolean rightStickButtonWasPressed = false; // Changed from original to prevent immediate re-trigger
+    private boolean rightStickButtonWasPressed = false;
 
-    double hpos;
-    double hoodangle;
-    double servoAngle;
-    double servopos;
+    double hpos, hoodangle, servoAngle, servopos;
     public static double samOffset;
 
-    /**
-     * This OpMode illustrates how to use a video source (camera) as a color sensor
-     */
-    double tx = -72; // Target X
-    double ty = 72;  // Target Y
+    // Target pos
+    double tx = -72;
+    double ty = 72;
     double t = 1;
 
     VisionPortal myVisionPortal;
     boolean all = false;
+    double samOffsetv = 0;
+    private FtcDashboard dashboard;
 
+    double intakeCmd = 0;
     @Override
     public void runOpMode() {
 
-        /* these are the subsystems */
-        {
-            h = new hardwareSubNewBot(hardwareMap);
-            v = new varSub();
-            fly = new flywheelSub(hardwareMap); // <-- Initialized the new subsystem
-        }
+        // Initialize Limelight
+        limelight = hardwareMap.get(Limelight3A.class, "limelight");
+        limelight.setPollRateHz(50);
+        limelight.pipelineSwitch(4);
+        limelight.start();
 
-        /* these are the timers */
-        {
-            endgameTimer = new Timer();
-        }
+        PredominantColorProcessor.Builder frontProcessorBuilder;
+        PredominantColorProcessor.Builder backProcessorBuilder;
+        VisionPortal.Builder myVisionPortalBuilder;
+        PredominantColorProcessor frontPredominantColorProcessor;
+        PredominantColorProcessor middlePredominantColorProcessor;
+        PredominantColorProcessor.Result frontResult;
+        PredominantColorProcessor.Result middleResult;
+
+        frontProcessorBuilder = new PredominantColorProcessor.Builder();
+        backProcessorBuilder = new PredominantColorProcessor.Builder();
+
+        frontProcessorBuilder.setRoi(ImageRegion.asImageCoordinates(
+                80,
+                200,
+                250,
+                400));
+        backProcessorBuilder.setRoi(ImageRegion.asImageCoordinates(
+                600,
+                100,
+                800,
+                300));
+
+        frontProcessorBuilder.setSwatches(
+                PredominantColorProcessor.Swatch.ARTIFACT_GREEN,
+                PredominantColorProcessor.Swatch.ARTIFACT_PURPLE);
+        frontPredominantColorProcessor = frontProcessorBuilder.build();
 
 
-        /* telemetry stuff */
-        {
-            telemetry.setMsTransmissionInterval(50);
-            telemetry.setDisplayFormat(Telemetry.DisplayFormat.HTML);
-        }
+        backProcessorBuilder.setSwatches(
+                PredominantColorProcessor.Swatch.ARTIFACT_GREEN,
+                PredominantColorProcessor.Swatch.ARTIFACT_PURPLE);
+        middlePredominantColorProcessor = backProcessorBuilder.build();
 
-        // Initialize digital sensor mode (should be done once)
+        myVisionPortalBuilder = new VisionPortal.Builder();
+        myVisionPortalBuilder.addProcessor(frontPredominantColorProcessor);
+        myVisionPortalBuilder.addProcessor(middlePredominantColorProcessor);
+
+        myVisionPortalBuilder.setStreamFormat(VisionPortal.StreamFormat.YUY2);
+        myVisionPortalBuilder.setCameraResolution(new Size(800, 448));
+        myVisionPortalBuilder.setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"));
+
+        // Build the VisionPortal so it actually starts the stream
+        myVisionPortal = myVisionPortalBuilder.build();
+
+        dashboard = FtcDashboard.getInstance();
+        h = new hardwareSubNewBot(hardwareMap);
+        v = new varSub();
+        fly = new flywheelSub(hardwareMap);
+        endgameTimer = new Timer();
+
+        telemetry.setMsTransmissionInterval(50);
+        telemetry.setDisplayFormat(Telemetry.DisplayFormat.HTML);
+
         h.topDistSensor.setMode(DigitalChannel.Mode.INPUT);
-        h.midDistSensor.setMode(DigitalChannel.Mode.INPUT); // Assuming these exist
-        h.frontDistSensor.setMode(DigitalChannel.Mode.INPUT); // Assuming these exist
+        h.midDistSensor.setMode(DigitalChannel.Mode.INPUT);
+        h.frontDistSensor.setMode(DigitalChannel.Mode.INPUT);
 
-        // Set initial positions for intake-related servos and motors
-        h.sickle.setPosition(1.0);     // Default: up/retracted
-        h.gate.setPosition(0.65);      // Default: closed/intake pos
-        h.swingArm.setPosition(1.0);   // Default: up/retracted
+        // Initial hardware pos
+        h.sickle.setPosition(1.0);
+        h.gate.setPosition(0.65);
+        h.swingArm.setPosition(1.0);
         h.intake.setPower(0);
         h.indexer.setPower(0);
 
-
-        // Gamepad debounce variables for turret trim (gamepad2)
+        // Turret trim debounces
         boolean left = gamepad2.dpad_left;
         boolean right = gamepad2.dpad_right;
         boolean prevleft = left;
@@ -165,46 +183,95 @@ public class teleop extends LinearOpMode {
         boolean prevaa = aa;
         boolean prevbb = bb;
 
-        float motif                         = 111;
-        double robotX;
-        double robotY;
-        double xl;
-        double yl;
-        double hypot;
+        boolean up = gamepad2.dpad_up;
+        boolean down = gamepad2.dpad_down;
+        boolean prevUp = up;
+        boolean prevDown = down;
 
-        double vx;
-        double vy;
-        double fl                           ;
-        double fr                           ;
-        double bl                           ;
-        double br                           ;
-        double max                          ;
+        float motif = 111;
+        double robotX, robotY, xl, yl, hypot;
+        double vx, vy, fl, fr, bl, br, max;
 
-        boolean currentDpadLeft             ;
-        boolean currentPs                   ;
-        boolean currentRightBumper          ;
-        boolean currentRightStickButton     ;
-        boolean currentLeftStickButton      ;
-        double lift                         ;
-        double distanceIn                   ;
-        double velocityreal                 ;
-        double velDiff                      ;
+        boolean currentDpadLeft, currentPs, currentRightBumper;
+        boolean currentRightStickButton, currentLeftStickButton;
+        double lift, distanceIn, velocityreal, velDiff;
 
-        waitForStart();
+        // Limelight init loop - Displays tags in telemetry based on a single seen tag
+        while (!isStarted() && !isStopRequested()) {
+            LLResult result = limelight.getLatestResult();
+
+            if (result != null && result.isValid()) {
+                List<LLResultTypes.FiducialResult> fiducials = result.getFiducialResults();
+
+                if (!fiducials.isEmpty()) {
+                    // Grab the very first tag the Limelight sees
+                    int tagId = fiducials.get(0).getFiducialId();
+                    double targetTx = fiducials.get(0).getTargetXDegrees();
+
+                    if (tagId == 21) {
+                        telemetry.addLine("Limelight sees: Tag 21 (gpp)");
+                        // Targeting math for 21 goes here if needed
+                    } else if (tagId == 22) {
+                        telemetry.addLine("Limelight sees: Tag 22 (pgp)");
+                        // Targeting math for 22 goes here if needed
+                    } else if (tagId == 23) {
+                        telemetry.addLine("Limelight sees: Tag 23 (ppg)");
+                        // Targeting math for 23 goes here if needed
+                    } else {
+                        telemetry.addData("Limelight sees unknown Tag: ", tagId);
+                    }
+                } else {
+                    telemetry.addLine("No tags found. Centering turret to 151.5...");
+                    // Add your logic to move the turret back to 151.5 here
+                }
+                telemetry.update();
+            }
+        }
+
         timer.reset();
+
         while (opModeIsActive()) {
-
-            // =========================================================================
-            // NEW INTAKE STATE MACHINE LOGIC
-            // =========================================================================
-
-            // Debounce gamepad1 buttons for intake control
+            // Poll inputs
             currentDpadLeft         = gamepad1.dpad_left;
             currentPs               = gamepad1.ps;
             currentRightBumper      = gamepad1.right_bumper;
             currentRightStickButton = gamepad1.right_stick_button;
             currentLeftStickButton  = gamepad1.left_stick_button;
 
+            // Read intake from both gamepads, but gamepad1 wins if both are being used
+            double gamepad1IntakeCmd = gamepad1.right_trigger - gamepad1.left_trigger;
+            double gamepad2IntakeCmd = gamepad2.right_trigger - gamepad2.left_trigger;
+
+            if (Math.abs(gamepad1IntakeCmd) > 0.08) {
+                intakeCmd = gamepad1IntakeCmd;
+            } else {
+                intakeCmd = gamepad2IntakeCmd;
+            }
+
+            if (Math.abs(intakeCmd) < 0.08) {
+                intakeCmd = 0;
+            }
+
+            // Manual override cancels any active auto-sorting routines
+            if (currentDpadLeft || currentPs || currentRightBumper || Math.abs(intakeCmd) > 0.1 || gamepad1.dpad_right || gamepad1.dpad_down || gamepad1.dpad_up) {
+                activeSortingMotif = 0;
+            }
+
+            // --- GLOBAL OVERRIDE: GAMEPAD 1 ALWAYS WINS ---
+            // Force Firing
+            if (gamepad1.right_bumper) {
+                currentIntakeState = IntakeState.FIRING;
+            }
+            // Force Manual Intake
+            else if (Math.abs(intakeCmd) > 0.1) {
+                currentIntakeState = IntakeState.MANUAL_TRIGGERS_ACTIVE;
+                activeSortingMotif = 0; // Stop sorting
+            }
+            // ----------------------------------------------
+
+
+            // Intake State evaluation
+            // Intake State evaluation
             if (currentIntakeState == IntakeState.IDLE || currentIntakeState == IntakeState.MANUAL_TRIGGERS_ACTIVE || currentIntakeState == IntakeState.GATE_MANUAL_CONTROL) {
                 if (currentLeftStickButton && currentRightStickButton && !leftStickButtonWasPressed && !rightStickButtonWasPressed) {
                     currentIntakeState = IntakeState.INTAKE_TILL_GPP;
@@ -226,17 +293,17 @@ public class teleop extends LinearOpMode {
                     intakeStateTimer.reset();
                 } else if (currentRightBumper && !rightBumperWasPressed) {
                     currentIntakeState = IntakeState.FIRING;
-                } else {
-                    double intakeCmd = (gamepad1.right_trigger + gamepad2.right_trigger) - (gamepad1.left_trigger + gamepad2.left_trigger);
-                    if (Math.abs(intakeCmd) > 0.1) {
-                        currentIntakeState = IntakeState.MANUAL_TRIGGERS_ACTIVE;
-                    } else if (gamepad1.dpad_right || gamepad1.dpad_down || gamepad1.dpad_up) {
-                        currentIntakeState = IntakeState.GATE_MANUAL_CONTROL;
-                    } else if (currentIntakeState != IntakeState.IDLE) {
-                        currentIntakeState = IntakeState.IDLE;
-                    }
+                } else if (Math.abs(intakeCmd) > 0.1) {
+                    currentIntakeState = IntakeState.MANUAL_TRIGGERS_ACTIVE;
+                } else if (gamepad1.dpad_right || gamepad1.dpad_down || gamepad1.dpad_up) {
+                    currentIntakeState = IntakeState.GATE_MANUAL_CONTROL;
+                } else if (activeSortingMotif == 0) { // Only go IDLE if NOT sorting
+                    currentIntakeState = IntakeState.IDLE;
                 }
+
             }
+
+            // Update debounce
             dpadLeftWasPressed = currentDpadLeft;
             psWasPressed = currentPs;
             rightBumperWasPressed = currentRightBumper;
@@ -244,36 +311,65 @@ public class teleop extends LinearOpMode {
             leftStickButtonWasPressed = currentLeftStickButton;
 
 
+
+            // Execute current intake state
             switch (currentIntakeState) {
                 case IDLE:
                     h.intake.setPower(0);
                     h.indexer.setPower(0);
                     h.sickle.setPosition(.85);
                     h.gate.setPosition(0.65);
+
+                    if (activeSortingMotif != 0) {
+                        h.swingArm.setPosition(0.9); // Lift to see
+
+                        frontResult = frontPredominantColorProcessor.getAnalysis();
+                        middleResult = middlePredominantColorProcessor.getAnalysis();
+
+                        // 1. Check colors
+                        boolean match = false;
+                        if (activeSortingMotif == 211) {
+                            match = (frontResult.closestSwatch == PredominantColorProcessor.Swatch.ARTIFACT_PURPLE && middleResult.closestSwatch == PredominantColorProcessor.Swatch.ARTIFACT_PURPLE);
+                        } else if (activeSortingMotif == 121) {
+                            match = (frontResult.closestSwatch == PredominantColorProcessor.Swatch.ARTIFACT_PURPLE && middleResult.closestSwatch == PredominantColorProcessor.Swatch.ARTIFACT_GREEN);
+                        } else if (activeSortingMotif == 112) {
+                            match = (frontResult.closestSwatch == PredominantColorProcessor.Swatch.ARTIFACT_GREEN && middleResult.closestSwatch == PredominantColorProcessor.Swatch.ARTIFACT_PURPLE);
+                        }
+
+                        // 2. Only re-trigger if we HAVEN'T matched yet AND we aren't currently cycling
+                        if (match) {
+                            activeSortingMotif = 0; // Success: Stop checking
+                            h.swingArm.setPosition(0.65);
+                            currentIntakeState = IntakeState.IDLE;
+                        } else if (currentIntakeState == IntakeState.IDLE) {
+                            // Only trigger a new cycle if the camera failed to match
+                            // AND we aren't already running a cycle
+                            currentIntakeState = IntakeState.SINGLE_NOTE_CYCLE_INIT;
+                            intakeStateTimer.reset();
+                        }
+                    } else {
+                        h.swingArm.setPosition(0.65); // Default
+                    }
                     break;
 
                 case MANUAL_TRIGGERS_ACTIVE:
-                    double intakeCmd = (gamepad1.right_trigger + gamepad2.right_trigger) - (gamepad1.left_trigger + gamepad2.left_trigger);
+                    // Use the class-level intakeCmd calculated in the polling loop
                     h.intake.setPower(-intakeCmd);
                     h.indexer.setPower(-intakeCmd);
                     h.swingArm.setPosition(.65);
                     h.gate.setPosition(.65);
 
+                    // If triggers are released, return to IDLE
                     if (Math.abs(intakeCmd) < 0.1) {
                         currentIntakeState = IntakeState.IDLE;
                     }
                     break;
 
                 case GATE_MANUAL_CONTROL:
-                    if (gamepad1.dpad_right) {
-                        h.gate.setPosition(0.8);
-                    } else if (gamepad1.dpad_down) {
-                        h.gate.setPosition(0.65);
-                    } else if (gamepad1.dpad_up) {
-                        h.gate.setPosition(1);
-                    } else {
-                        currentIntakeState = IntakeState.IDLE;
-                    }
+                    if (gamepad1.dpad_right) h.gate.setPosition(0.8);
+                    else if (gamepad1.dpad_down) h.gate.setPosition(0.65);
+                    else if (gamepad1.dpad_up) h.gate.setPosition(1);
+                    else currentIntakeState = IntakeState.IDLE;
                     break;
 
                 case SINGLE_NOTE_CYCLE_INIT:
@@ -328,6 +424,15 @@ public class teleop extends LinearOpMode {
                     break;
                 case SINGLE_NOTE_CYCLE_STEP_7:
                     if (intakeStateTimer.milliseconds() > 1200) {
+                        h.indexer.setPower(0);
+                        h.intake.setPower(0);
+                        h.swingArm.setPosition(.9);
+                        currentIntakeState = IntakeState.SINGLE_NOTE_CYCLE_STEP_8;
+                    }
+                    break;
+
+                case SINGLE_NOTE_CYCLE_STEP_8:
+                    if (intakeStateTimer.milliseconds() > 1400) {
                         h.intake.setPower(0);
                         currentIntakeState = IntakeState.IDLE;
                     }
@@ -338,6 +443,7 @@ public class teleop extends LinearOpMode {
                     h.indexer.setPower(-1);
                     h.intake.setPower(-1);
                     h.swingArm.setPosition(.95);
+                    // This is the only way to exit firing
                     if (!gamepad1.right_bumper) {
                         currentIntakeState = IntakeState.FIRING_COMPLETE;
                         intakeStateTimer.reset();
@@ -348,24 +454,16 @@ public class teleop extends LinearOpMode {
                     h.indexer.setPower(0);
                     h.swingArm.setPosition(1.0);
                     h.gate.setPosition(0.65);
-                    if (intakeStateTimer.milliseconds() > 200) {
-                        currentIntakeState = IntakeState.IDLE;
-                    }
+                    if (intakeStateTimer.milliseconds() > 200) currentIntakeState = IntakeState.IDLE;
                     break;
             }
 
-            // --- PTO Control Logic ---
+            // PTO Control
             if (gamepad1.options && !ptoButtonWasPressed) {
                 ptoIsEngaged = !ptoIsEngaged;
                 ptoButtonWasPressed = true;
-
-                if (ptoIsEngaged) {
-                    currentPtoDeploymentState = PtoDeploymentState.DEPLOYING_R_SERVO;
-                    ptoDeploymentTimer.reset();
-                } else {
-                    currentPtoDeploymentState = PtoDeploymentState.RETRACTING_L_SERVO;
-                    ptoDeploymentTimer.reset();
-                }
+                currentPtoDeploymentState = ptoIsEngaged ? PtoDeploymentState.DEPLOYING_R_SERVO : PtoDeploymentState.RETRACTING_L_SERVO;
+                ptoDeploymentTimer.reset();
             } else if (!gamepad1.options) {
                 ptoButtonWasPressed = false;
             }
@@ -374,8 +472,8 @@ public class teleop extends LinearOpMode {
                 h.nautR.setPosition(.1);
                 h.nautL.setPosition(.1);
             } else if (gamepad1.options){
-                h.nautR.setPosition(.6);
-                h.nautL.setPosition(.6);
+                h.nautR.setPosition(.5);
+                h.nautL.setPosition(.5);
             }
 
             switch (currentPtoDeploymentState) {
@@ -386,19 +484,19 @@ public class teleop extends LinearOpMode {
                     h.nautL.setPosition(.1);
                     break;
                 case DEPLOYING_R_SERVO:
-                    h.nautR.setPosition(.6);
+                    h.nautR.setPosition(.5);
                     h.ptoR.setPosition(PTO_R_ENGAGED_POSITION);
                     currentPtoDeploymentState = PtoDeploymentState.DEPLOYING_L_SERVO;
                     break;
                 case WAITING_FOR_DEPLOY_DELAY:
                     h.ptoR.setPosition(PTO_R_ENGAGED_POSITION);
-                    h.nautR.setPosition(.6);
+                    h.nautR.setPosition(.5);
                     if (ptoDeploymentTimer.milliseconds() >= PTO_DEPLOYMENT_DELAY_MS) {
                         currentPtoDeploymentState = PtoDeploymentState.DEPLOYING_L_SERVO;
                     }
                     break;
                 case DEPLOYING_L_SERVO:
-                    h.nautL.setPosition(.6);
+                    h.nautL.setPosition(.5);
                     h.ptoL.setPosition(PTO_L_ENGAGED_POSITION);
                     currentPtoDeploymentState = PtoDeploymentState.ENGAGED;
                     break;
@@ -422,7 +520,7 @@ public class teleop extends LinearOpMode {
                     break;
             }
 
-
+            // Drivetrain kinematics
             v.axial = -gamepad1.left_stick_y;
             v.lateral = gamepad1.left_stick_x;
             v.yawCmd = gamepad1.right_stick_x;
@@ -439,69 +537,61 @@ public class teleop extends LinearOpMode {
             h.backLeft.setPower(bl / max);
             h.backRight.setPower(br / max);
 
-            vy                         = h.pip.getVelY(DistanceUnit.INCH);
-            vx                         = h.pip.getVelX(DistanceUnit.INCH);
+            // Odometry / Target Tracking
+            vy = h.pip.getVelY(DistanceUnit.INCH);
+            vx = h.pip.getVelX(DistanceUnit.INCH);
 
-            tx                         = -72 - (vx * t);
-            ty                         =  72 - (vy * t);
+            tx = -72 - (vx * t);
+            ty = 72 - (vy * t);
 
             h.pip.update();
 
-            robotX                     = h.pip.getPosX(DistanceUnit.INCH);
-            robotY                     = h.pip.getPosY(DistanceUnit.INCH);
+            robotX = h.pip.getPosX(DistanceUnit.INCH);
+            robotY = h.pip.getPosY(DistanceUnit.INCH);
 
-            xl                         = tx - robotX;
-            yl                         = ty - robotY;
-            hypot                      = Math.sqrt((xl * xl) + (yl * yl));
+            xl = tx - robotX;
+            yl = ty - robotY;
+            hypot = Math.sqrt((xl * xl) + (yl * yl));
 
-            if ( hypot < 89){
-                t                      =  0.004 * hypot + 0.468;
-            } else if ( hypot > 89 && hypot < 121)  {
-                t                      =  0.833;
-            } else if ( hypot > 121) {
-                t                      = -0.004 * hypot + 1.317;
+            // Predictive lookahead scalar
+            if (hypot < 89){
+                t = 0.004 * hypot + 0.468;
+            } else if (hypot > 89 && hypot < 121) {
+                t = 0.833;
+            } else if (hypot > 121) {
+                t = -0.004 * hypot + 1.317;
             }
 
-            // =========================================================================
-            //  TURRET APPLICATION
-            // =========================================================================
+            // Turret calculation
             double angleToGoal = Math.atan2(yl, xl);
             double robotHeading = h.pip.getHeading(AngleUnit.RADIANS);
 
-            double targetTurretRad = angleToGoal - robotHeading;
+            // Shift center 180 deg for rear-facing servo
+            double targetTurretRad = angleToGoal - robotHeading - Math.PI;
 
-            while (targetTurretRad > Math.PI) targetTurretRad  -= 2 * Math.PI;
-            while (targetTurretRad < -Math.PI) targetTurretRad += 2 * Math.PI;
+            // Standardize angle
+            while (targetTurretRad > 2 * Math.PI) targetTurretRad -= 2 * Math.PI;
+            while (targetTurretRad < -2 * Math.PI) targetTurretRad += 2 * Math.PI;
 
-            double baseServoDegrees = Math.toDegrees(targetTurretRad) - (314.6112145 / 2.0);
+            // Apply physical 190-deg limits
+            double limitRad = Math.toRadians(190);
+            while (targetTurretRad > limitRad) targetTurretRad -= 2 * Math.PI;
+            while (targetTurretRad < -limitRad) targetTurretRad += 2 * Math.PI;
+
+            double baseServoDegrees = Math.toDegrees(targetTurretRad) - (395 / 2.0);
 
             left = gamepad2.dpad_left;
             right = gamepad2.dpad_right;
 
-            aa = gamepad2.a;
-            bb = gamepad2.b;
-
-            if (left && !prevleft && !right) {
-                samOffset = Range.clip(samOffset + 2.5, -40, 40);
-            }
-            if (right && !prevright && !left) {
-                samOffset = Range.clip(samOffset - 2.5, -40, 40);
-            }
-
+            // Turret trims
+            if (left && !prevleft && !right) samOffset = Range.clip(samOffset + 2.5, -40, 40);
+            if (right && !prevright && !left) samOffset = Range.clip(samOffset - 2.5, -40, 40);
             prevleft = left;
             prevright = right;
 
-            if (aa && !prevaa && !bb) {
-                samOffset = Range.clip(samOffset + 2.5, -40, 40);
-            }
-            if (bb && !prevbb && !aa) {
-                samOffset = Range.clip(samOffset - 2.5, -40, 40);
-            }
-
-            prevaa = aa;
-            prevbb = bb;
 
             double finalServoDegrees = baseServoDegrees + v.visionOffsetDeg + samOffset;
+            double trueServoPos = Math.abs((finalServoDegrees) / 395);
 
             if ((gamepad1.ps && !psWasPressed) || gamepad2.ps) {
                 if (currentIntakeState != IntakeState.INTAKE_TILL_FULL_INIT &&
@@ -510,617 +600,140 @@ public class teleop extends LinearOpMode {
                     h.turret2.setPosition(0.5);
                 }
             } else {
-                h.turret1.setPosition(Math.abs((finalServoDegrees) / 314.6112145));
-                h.turret2.setPosition(Math.abs((finalServoDegrees) / 314.6112145));
+                h.turret1.setPosition(Range.clip(trueServoPos, .1, .9));
+                h.turret2.setPosition(Range.clip(trueServoPos, .1, .9));
             }
 
             if (gamepad1.dpad_up) {
-                h.pip.setPosition(new Pose2D(DistanceUnit.INCH, -68.02, 36, AngleUnit.DEGREES, 180));
+                h.pip.setPosition(new Pose2D(DistanceUnit.INCH, -61.3784, 37.8365, AngleUnit.DEGREES, 90));
                 samOffset = 0;
+                fly.samOffsetV = 400;
             } else if (gamepad1.dpad_down) {
                 h.pip.resetPosAndIMU();
                 samOffset = 0;
+                fly.samOffsetV = 400;
             }
 
-
-            // =========================================================================
-            //  FLYWHEEL SUBSYSTEM CONTROL
-            // =========================================================================
-
-            // 1. Pass the calculated distance into the subsystem
+            // Flywheel Update
             fly.hypot = hypot;
+            fly.up = gamepad2.dpad_up;
+            fly.down = gamepad2.dpad_down;
 
+            if (gamepad1.x) v.var = 1;
+            else if (gamepad1.y) v.var = 0;
 
+            if (v.var == 1) fly.runFlywheel();
+            else fly.power0();
 
-            /* flywheel turn on/off */
-
-                if (gamepad1.x) {
-                    v.var = 1;
-                } else if (gamepad1.y) {
-                    v.var = 0;
-                }
-
-                if (v.var == 1) {
-                    fly.runFlywheel();
-                } else {
-                    fly.power0();
-                }
-
-            // 3. Run the PIDF loop and let it manage target RPM and power automatically
             fly.loop();
 
-            // =========================================================================
-            //  HOOD LINEAR REGRESSION
-            // =========================================================================
-
-            if (hypot < 75) {
-                hpos = -0.015 * hypot + 1.654;
-            } else if(hypot > 75 && hypot < 96.3){
-                hpos = -0.005 * hypot + 0.675;
-            } else if(hypot > 96.3 && hypot < 129){
-                hpos = -0.015 * hypot + 1.944;
-            } else if(hypot > 151){
+            // Hood linear regression
+            if (hypot < 72) {
+                hpos = -0.004 * hypot + .892;
+            } else if(hypot > 72 && hypot < 96){
+                hpos = -0.013 * hypot + 1.536;
+            } else if(hypot > 96){
                 hpos = 0;
             }
-
-            // Clip base hood pos
             hpos = Range.clip(hpos, 0, .7);
-
-            // Calculate base hood angle based purely on distance
-            hoodangle = 32.857142857142857142857142857143 * hpos + 32;
-
-            // --- USE THE SUBSYSTEM FOR THE HOOD MATH! ---
-            // Grab the true velocity directly from the subsystem in degrees per second
-            velocityreal = fly.getRotation(flywheelSub.MeasureUnit.DEGREES, flywheelSub.TimeScale.SECONDS);
-
-            // Calculate lag: target RPM to degrees per second minus actual velocity
-            velDiff = ((fly.target / 60.0) * 360.0) - velocityreal;
-
-            // This multiplier converts the massive velocity error into a small degree adjustment
-            double velCompensationFactor = 0.001; // <-- YOU WILL TUNE THIS NUMBER
-
-            // Apply the adjustment to the base hood angle
-            servoAngle = hoodangle + (velDiff * velCompensationFactor);
-
-            // Convert the compensated angle back into a servo position (PEMDAS fixed!)
-            servopos = (servoAngle - 32) * 0.03043478260869565217391304347826;
-
-            // Final clip for servo output to protect the physical hardware
-            servopos = Range.clip(servopos, 0, .7);
-            h.hood.setPosition(servopos);
-
-
-
-            if (endgameTimer.getElapsedTimeSeconds() > 90 || gamepad2.options){
-
-                PredominantColorProcessor.Builder frontProcessorBuilder;
-                PredominantColorProcessor.Builder backProcessorBuilder;
-                VisionPortal.Builder myVisionPortalBuilder;
-                PredominantColorProcessor frontPredominantColorProcessor;
-                PredominantColorProcessor backPredominantColorProcessor;
-                VisionPortal myVisionPortal;
-                PredominantColorProcessor.Result frontResult;
-                PredominantColorProcessor.Result backResult;
-
-
-                frontProcessorBuilder = new PredominantColorProcessor.Builder();
-                backProcessorBuilder = new PredominantColorProcessor.Builder();
-
-                frontProcessorBuilder.setRoi(ImageRegion.asImageCoordinates(
-                        80,
-                        200,
-                        250,
-                        400));
-                backProcessorBuilder.setRoi(ImageRegion.asImageCoordinates(
-                        600,
-                        100,
-                        800,
-                        300));
-
-                frontProcessorBuilder.setSwatches(
-                        PredominantColorProcessor.Swatch.ARTIFACT_GREEN,
-                        PredominantColorProcessor.Swatch.ARTIFACT_PURPLE);
-                frontPredominantColorProcessor = frontProcessorBuilder.build();
-
-
-                backProcessorBuilder.setSwatches(
-                        PredominantColorProcessor.Swatch.ARTIFACT_GREEN,
-                        PredominantColorProcessor.Swatch.ARTIFACT_PURPLE);
-                backPredominantColorProcessor = backProcessorBuilder.build();
-
-                myVisionPortalBuilder = new VisionPortal.Builder();
-                myVisionPortalBuilder.addProcessor(frontPredominantColorProcessor);
-                myVisionPortalBuilder.addProcessor(backPredominantColorProcessor);
-
-                myVisionPortalBuilder.setStreamFormat(VisionPortal.StreamFormat.YUY2);
-                myVisionPortalBuilder.setCameraResolution(new Size(800, 448));
-                myVisionPortalBuilder.setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"));
-
-
-                if (gamepad1.touchpad) {
-                    lift = 1;
-                } else {
-                    lift = 0;
-                }
-                distanceIn = h.revDist.getDistance(DistanceUnit.INCH);
-                if (lift == 1) {
-                    if (distanceIn < 15){
-                        h.frontLeft.setPower(1);
-                        h. backLeft.setPower(1);
-                        h.frontRight.setPower(-1);
-                        h.backRight.setPower( -1);
-                    }
-                    if (distanceIn < 16 && distanceIn > 15) {
-                        h.frontLeft.setPower(.5);
-                        h.backLeft.setPower(.5);
-                        h.frontRight.setPower(-.5);
-                        h.backRight.setPower(-.5);
-                    }
-                    if (distanceIn >= 16) {
-                        currentPtoDeploymentState = PtoDeploymentState.DEPLOYING_R_SERVO;
-                    }
-
-                }
-
-                if(h.topDistSensor.getState() == true && h.midDistSensor.getState() == true && h.frontDistSensor.getState() == true){
-                    all = true;
-                } else {
-                    all = false;
-                }
-
-                if (gamepad2.a == true) {
-                    while (opModeIsActive() && !isStopRequested()) {
-                        frontResult = frontPredominantColorProcessor.getAnalysis();
-
-                        if (frontResult.closestSwatch.equals(PredominantColorProcessor.Swatch.ARTIFACT_GREEN)) {
-                            break;
-                        }
-
-                        h.sickle.setPosition(0.85);
-                        h.swingArm.setPosition(0.5);
-                        h.gate.setPosition(0.82);
-                        sleep(250);
-                        h.intake.setPower(-1);
-                        h.indexer.setPower(-1);
-                        sleep(250);
-                        h.sickle.setPosition(0.9);
-                        sleep(250);
-                        h.gate.setPosition(0.85);
-                        h.swingArm.setPosition(0.2);
-                        h.intake.setPower(0);
-                        sleep(250);
-                        h.intake.setPower(0.5);
-                        h.indexer.setPower(-1);
-                        sleep(200);
-                        h.indexer.setPower(1);
-                        sleep(100);
-                        h.gate.setPosition(0.65);
-                        h.indexer.setPower(0);
-                        h.swingArm.setPosition(0.5);
-                        h.intake.setPower(-1);
-                        sleep(100);
-                        h.intake.setPower(0);
-
-                        h.swingArm.setPosition(1);
-                        sleep(500);
-
-                    }
-
-                }
-                Gamepad.LedEffect motif112Effect = new Gamepad.LedEffect.Builder()
-                        .addStep(255, 0, 255, 400) //purple
-                        .addStep(0, 0, 0, 100)
-                        .addStep(255, 0, 255, 400) //purple
-                        .addStep(0, 0, 0, 100)
-                        .addStep(0, 255, 0, 400)   //green
-                        .addStep(0, 0, 0, 100)
-                        .addStep(255, 0, 0, 500)   //red
-                        .addStep(0, 0, 0, 400)     //pause
-                        .setRepeating(true)
-                        .build();
-
-                Gamepad.LedEffect motif121Effect = new Gamepad.LedEffect.Builder()
-                        .addStep(255, 0, 255, 400) //purple
-                        .addStep(0, 0, 0, 100)
-                        .addStep(0, 255, 0, 400)   //green
-                        .addStep(0, 0, 0, 100)
-                        .addStep(255, 0, 255, 400) //purple
-                        .addStep(0, 0, 0, 100)
-                        .addStep(255, 0, 0, 500)   //red
-                        .addStep(0, 0, 0, 400)     //pause
-                        .setRepeating(true)
-                        .build();
-
-                Gamepad.LedEffect motif211Effect = new Gamepad.LedEffect.Builder()
-                        .addStep(0, 255, 0, 400)   //green
-                        .addStep(0, 0, 0, 100)
-                        .addStep(255, 0, 255, 400) //purple
-                        .addStep(0, 0, 0, 100)
-                        .addStep(255, 0, 255, 400) //purple
-                        .addStep(0, 0, 0, 100)
-                        .addStep(255, 0, 0, 500)   //red
-                        .addStep(0, 0, 0, 400)     //pause
-                        .setRepeating(true)
-                        .build();
-
-                if (gamepad2.left_bumper){
-
-                    if (gamepad2.x){
-                        motif = 211;
-                        gamepad2.runLedEffect(motif211Effect);
-                    } else if (gamepad2.a){
-                        motif = 121;
-                        gamepad2.runLedEffect(motif121Effect);
-                    } else if (gamepad2.b){
-                        motif = 112;
-                        gamepad2.runLedEffect(motif112Effect);
-                    }
-
-                }
-
-                if (gamepad2.x && !gamepad2.left_bumper){
-                    if (motif == 211 && all){
-                        while (opModeIsActive() && !isStopRequested()) {
-                            frontResult = frontPredominantColorProcessor.getAnalysis();
-                            backResult = backPredominantColorProcessor.getAnalysis();
-
-                            if (frontResult.closestSwatch.equals(PredominantColorProcessor.Swatch.ARTIFACT_PURPLE) && backResult.closestSwatch.equals(PredominantColorProcessor.Swatch.ARTIFACT_PURPLE) || gamepad2.touchpadWasPressed()) {
-                                break;
-                            }
-
-                            h.sickle.setPosition(0.85);
-                            h.swingArm.setPosition(0.5);
-                            h.gate.setPosition(0.82);
-                            sleep(250);
-                            h.intake.setPower(-1);
-                            h.indexer.setPower(-1);
-                            sleep(250);
-                            h.sickle.setPosition(0.9);
-                            sleep(250);
-                            h.gate.setPosition(0.85);
-                            h.swingArm.setPosition(0.2);
-                            h.intake.setPower(0);
-                            sleep(250);
-                            h.intake.setPower(0.5);
-                            h.indexer.setPower(-1);
-                            sleep(200);
-                            h.indexer.setPower(1);
-                            sleep(100);
-                            h.gate.setPosition(0.65);
-                            h.indexer.setPower(0);
-                            h.swingArm.setPosition(0.5);
-                            h.intake.setPower(-1);
-                            sleep(100);
-                            h.intake.setPower(0);
-
-                            h.swingArm.setPosition(1);
-                            sleep(500);
-                        }
-                    }
-
-                    if (motif == 121 && all){
-                        while (opModeIsActive() && !isStopRequested()) {
-                            backResult = backPredominantColorProcessor.getAnalysis();
-
-                            if (backResult.closestSwatch.equals(PredominantColorProcessor.Swatch.ARTIFACT_GREEN) || gamepad2.touchpadWasPressed()) {
-                                break;
-                            }
-
-                            h.sickle.setPosition(0.85);
-                            h.swingArm.setPosition(0.5);
-                            h.gate.setPosition(0.82);
-                            sleep(250);
-                            h.intake.setPower(-1);
-                            h.indexer.setPower(-1);
-                            sleep(250);
-                            h.sickle.setPosition(0.9);
-                            sleep(250);
-                            h.gate.setPosition(0.85);
-                            h.swingArm.setPosition(0.2);
-                            h.intake.setPower(0);
-                            sleep(250);
-                            h.intake.setPower(0.5);
-                            h.indexer.setPower(-1);
-                            sleep(200);
-                            h.indexer.setPower(1);
-                            sleep(100);
-                            h.gate.setPosition(0.65);
-                            h.indexer.setPower(0);
-                            h.swingArm.setPosition(0.5);
-                            h.intake.setPower(-1);
-                            sleep(100);
-                            h.intake.setPower(0);
-
-                            h.swingArm.setPosition(1);
-                            sleep(500);
-                        }
-                    }
-
-                    if (motif == 112 && all){
-                        while (opModeIsActive() && !isStopRequested()) {
-                            frontResult = frontPredominantColorProcessor.getAnalysis();
-
-                            if (frontResult.closestSwatch.equals(PredominantColorProcessor.Swatch.ARTIFACT_GREEN) || gamepad2.touchpadWasPressed()) {
-                                break;
-                            }
-
-                            h.sickle.setPosition(0.85);
-                            h.swingArm.setPosition(0.5);
-                            h.gate.setPosition(0.82);
-                            sleep(250);
-                            h.intake.setPower(-1);
-                            h.indexer.setPower(-1);
-                            sleep(250);
-                            h.sickle.setPosition(0.9);
-                            sleep(250);
-                            h.gate.setPosition(0.85);
-                            h.swingArm.setPosition(0.2);
-                            h.intake.setPower(0);
-                            sleep(250);
-                            h.intake.setPower(0.5);
-                            h.indexer.setPower(-1);
-                            sleep(200);
-                            h.indexer.setPower(1);
-                            sleep(100);
-                            h.gate.setPosition(0.65);
-                            h.indexer.setPower(0);
-                            h.swingArm.setPosition(0.5);
-                            h.intake.setPower(-1);
-                            sleep(100);
-                            h.intake.setPower(0);
-
-                            h.swingArm.setPosition(1);
-                            sleep(500);
-
-                        }
-                    }
-
-
-                }
-
-                if (gamepad2.a && !gamepad2.left_bumper){
-                    if (motif == 211 && all){
-                        while (opModeIsActive() && !isStopRequested()) {
-                            backResult = backPredominantColorProcessor.getAnalysis();
-
-                            if (backResult.closestSwatch.equals(PredominantColorProcessor.Swatch.ARTIFACT_GREEN) || gamepad2.touchpadWasPressed()) {
-                                break;
-                            }
-
-                            h.sickle.setPosition(0.85);
-                            h.swingArm.setPosition(0.5);
-                            h.gate.setPosition(0.82);
-                            sleep(250);
-                            h.intake.setPower(-1);
-                            h.indexer.setPower(-1);
-                            sleep(250);
-                            h.sickle.setPosition(0.9);
-                            sleep(250);
-                            h.gate.setPosition(0.85);
-                            h.swingArm.setPosition(0.2);
-                            h.intake.setPower(0);
-                            sleep(250);
-                            h.intake.setPower(0.5);
-                            h.indexer.setPower(-1);
-                            sleep(200);
-                            h.indexer.setPower(1);
-                            sleep(100);
-                            h.gate.setPosition(0.65);
-                            h.indexer.setPower(0);
-                            h.swingArm.setPosition(0.5);
-                            h.intake.setPower(-1);
-                            sleep(100);
-                            h.intake.setPower(0);
-
-                            h.swingArm.setPosition(1);
-                            sleep(500);
-                        }
-                    }
-
-                    if (motif == 121 && all){
-                        while (opModeIsActive() && !isStopRequested()) {
-                            frontResult = frontPredominantColorProcessor.getAnalysis();
-
-                            if (frontResult.closestSwatch.equals(PredominantColorProcessor.Swatch.ARTIFACT_GREEN) || gamepad2.touchpadWasPressed()) {
-                                break;
-                            }
-
-                            h.sickle.setPosition(0.85);
-                            h.swingArm.setPosition(0.5);
-                            h.gate.setPosition(0.82);
-                            sleep(250);
-                            h.intake.setPower(-1);
-                            h.indexer.setPower(-1);
-                            sleep(250);
-                            h.sickle.setPosition(0.9);
-                            sleep(250);
-                            h.gate.setPosition(0.85);
-                            h.swingArm.setPosition(0.2);
-                            h.intake.setPower(0);
-                            sleep(250);
-                            h.intake.setPower(0.5);
-                            h.indexer.setPower(-1);
-                            sleep(200);
-                            h.indexer.setPower(1);
-                            sleep(100);
-                            h.gate.setPosition(0.65);
-                            h.indexer.setPower(0);
-                            h.swingArm.setPosition(0.5);
-                            h.intake.setPower(-1);
-                            sleep(100);
-                            h.intake.setPower(0);
-
-                            h.swingArm.setPosition(1);
-                            sleep(500);
-
-                        }
-                    }
-
-                    if (motif == 112 && all){
-                        while (opModeIsActive() && !isStopRequested()) {
-                            frontResult = frontPredominantColorProcessor.getAnalysis();
-                            backResult = backPredominantColorProcessor.getAnalysis();
-
-                            if (frontResult.closestSwatch.equals(PredominantColorProcessor.Swatch.ARTIFACT_PURPLE) && backResult.closestSwatch.equals(PredominantColorProcessor.Swatch.ARTIFACT_PURPLE) || gamepad2.touchpadWasPressed()) {
-                                break;
-                            }
-
-                            h.sickle.setPosition(0.85);
-                            h.swingArm.setPosition(0.5);
-                            h.gate.setPosition(0.82);
-                            sleep(250);
-                            h.intake.setPower(-1);
-                            h.indexer.setPower(-1);
-                            sleep(250);
-                            h.sickle.setPosition(0.9);
-                            sleep(250);
-                            h.gate.setPosition(0.85);
-                            h.swingArm.setPosition(0.2);
-                            h.intake.setPower(0);
-                            sleep(250);
-                            h.intake.setPower(0.5);
-                            h.indexer.setPower(-1);
-                            sleep(200);
-                            h.indexer.setPower(1);
-                            sleep(100);
-                            h.gate.setPosition(0.65);
-                            h.indexer.setPower(0);
-                            h.swingArm.setPosition(0.5);
-                            h.intake.setPower(-1);
-                            sleep(100);
-                            h.intake.setPower(0);
-
-                            h.swingArm.setPosition(1);
-                            sleep(500);
-                        }
-                    }
-                }
-
-                if (gamepad2.b  && !gamepad2.left_bumper){
-                    if (motif == 211 && all){
-                        while (opModeIsActive() && !isStopRequested()) {
-                            frontResult = frontPredominantColorProcessor.getAnalysis();
-
-                            if (frontResult.closestSwatch.equals(PredominantColorProcessor.Swatch.ARTIFACT_GREEN) || gamepad2.touchpadWasPressed()) {
-                                break;
-                            }
-
-                            h.sickle.setPosition(0.85);
-                            h.swingArm.setPosition(0.5);
-                            h.gate.setPosition(0.82);
-                            sleep(250);
-                            h.intake.setPower(-1);
-                            h.indexer.setPower(-1);
-                            sleep(250);
-                            h.sickle.setPosition(0.9);
-                            sleep(250);
-                            h.gate.setPosition(0.85);
-                            h.swingArm.setPosition(0.2);
-                            h.intake.setPower(0);
-                            sleep(250);
-                            h.intake.setPower(0.5);
-                            h.indexer.setPower(-1);
-                            sleep(200);
-                            h.indexer.setPower(1);
-                            sleep(100);
-                            h.gate.setPosition(0.65);
-                            h.indexer.setPower(0);
-                            h.swingArm.setPosition(0.5);
-                            h.intake.setPower(-1);
-                            sleep(100);
-                            h.intake.setPower(0);
-
-                            h.swingArm.setPosition(1);
-                            sleep(500);
-
-                        }
-                    }
-
-                    if (motif == 121 && all){
-                        while (opModeIsActive() && !isStopRequested()) {
-                            frontResult = frontPredominantColorProcessor.getAnalysis();
-                            backResult = backPredominantColorProcessor.getAnalysis();
-
-                            if (frontResult.closestSwatch.equals(PredominantColorProcessor.Swatch.ARTIFACT_PURPLE) && backResult.closestSwatch.equals(PredominantColorProcessor.Swatch.ARTIFACT_PURPLE) || gamepad2.touchpadWasPressed()) {
-                                break;
-                            }
-
-                            h.sickle.setPosition(0.85);
-                            h.swingArm.setPosition(0.5);
-                            h.gate.setPosition(0.82);
-                            sleep(250);
-                            h.intake.setPower(-1);
-                            h.indexer.setPower(-1);
-                            sleep(250);
-                            h.sickle.setPosition(0.9);
-                            sleep(250);
-                            h.gate.setPosition(0.85);
-                            h.swingArm.setPosition(0.2);
-                            h.intake.setPower(0);
-                            sleep(250);
-                            h.intake.setPower(0.5);
-                            h.indexer.setPower(-1);
-                            sleep(200);
-                            h.indexer.setPower(1);
-                            sleep(100);
-                            h.gate.setPosition(0.65);
-                            h.indexer.setPower(0);
-                            h.swingArm.setPosition(0.5);
-                            h.intake.setPower(-1);
-                            sleep(100);
-                            h.intake.setPower(0);
-
-                            h.swingArm.setPosition(1);
-                            sleep(500);
-                        }
-                    }
-
-                    if (motif == 112 && all){
-                        while (opModeIsActive() && !isStopRequested()) {
-                            backResult = backPredominantColorProcessor.getAnalysis();
-
-                            if (backResult.closestSwatch.equals(PredominantColorProcessor.Swatch.ARTIFACT_GREEN) || gamepad2.touchpadWasPressed()) {
-                                break;
-                            }
-
-                            h.sickle.setPosition(0.85);
-                            h.swingArm.setPosition(0.5);
-                            h.gate.setPosition(0.82);
-                            sleep(250);
-                            h.intake.setPower(-1);
-                            h.indexer.setPower(-1);
-                            sleep(250);
-                            h.sickle.setPosition(0.9);
-                            sleep(250);
-                            h.gate.setPosition(0.85);
-                            h.swingArm.setPosition(0.2);
-                            h.intake.setPower(0);
-                            sleep(250);
-                            h.intake.setPower(0.5);
-                            h.indexer.setPower(-1);
-                            sleep(200);
-                            h.indexer.setPower(1);
-                            sleep(100);
-                            h.gate.setPosition(0.65);
-                            h.indexer.setPower(0);
-                            h.swingArm.setPosition(0.5);
-                            h.intake.setPower(-1);
-                            sleep(100);
-                            h.intake.setPower(0);
-
-                            h.swingArm.setPosition(1);
-                            sleep(500);
-                        }
-                    }
-                }
+            h.hood.setPosition(hpos);
+
+            // --- MOTIF OVERRIDE & LEDS ---
+            Gamepad.LedEffect motif112Effect = new Gamepad.LedEffect.Builder()
+                    .addStep(255, 0, 255, 400) //purple
+                    .addStep(0, 0, 0, 100)
+                    .addStep(255, 0, 255, 400) //purple
+                    .addStep(0, 0, 0, 100)
+                    .addStep(0, 255, 0, 400)   //green
+                    .addStep(0, 0, 0, 100)
+                    .addStep(255, 0, 0, 500)   //red
+                    .addStep(0, 0, 0, 400)     //pause
+                    .setRepeating(true)
+                    .build();
+
+            Gamepad.LedEffect motif121Effect = new Gamepad.LedEffect.Builder()
+                    .addStep(255, 0, 255, 400) //purple
+                    .addStep(0, 0, 0, 100)
+                    .addStep(0, 255, 0, 400)   //green
+                    .addStep(0, 0, 0, 100)
+                    .addStep(255, 0, 255, 400) //purple
+                    .addStep(0, 0, 0, 100)
+                    .addStep(255, 0, 0, 500)   //red
+                    .addStep(0, 0, 0, 400)     //pause
+                    .setRepeating(true)
+                    .build();
+
+            Gamepad.LedEffect motif211Effect = new Gamepad.LedEffect.Builder()
+                    .addStep(0, 255, 0, 400)   //green
+                    .addStep(0, 0, 0, 100)
+                    .addStep(255, 0, 255, 400) //purple
+                    .addStep(0, 0, 0, 100)
+                    .addStep(255, 0, 255, 400) //purple
+                    .addStep(0, 0, 0, 100)
+                    .addStep(255, 0, 0, 500)   //red
+                    .addStep(0, 0, 0, 400)     //pause
+                    .setRepeating(true)
+                    .build();
+
+
+            // --- ENDGAME & MACRO TRIGGERS ---
+
+
+            if(h.topDistSensor.getState() == true && h.midDistSensor.getState() == true && h.frontDistSensor.getState() == true){
+                all = true;
+            } else {
+                all = true;
+            }
+
+            // ---------------------------------------------------------
+            // MANUAL GAMEPAD SORTING CHECKS ONLY
+            // ---------------------------------------------------------
+            // this is for manual gpp (X)
+            if (gamepad2.x && all == true && activeSortingMotif == 0) {
+                activeSortingMotif = 211;
+                gamepad2.runLedEffect(motif211Effect);
+            }
+
+            // this is for manual pgp (A)
+            if (gamepad2.a && all == true && activeSortingMotif == 0) {
+                activeSortingMotif = 121;
+                gamepad2.runLedEffect(motif121Effect);
+            }
+
+            // this is for manual ppg (B)
+            if (gamepad2.b && all == true && activeSortingMotif == 0) {
+                activeSortingMotif = 112;
+                gamepad2.runLedEffect(motif112Effect);
             }
 
 
+            Pose2d pose = new Pose2d(h.pip.getPosX(DistanceUnit.INCH), h.pip.getPosY(DistanceUnit.INCH), Math.toRadians(h.pip.getHeading(AngleUnit.DEGREES)));
+            TelemetryPacket packet = new TelemetryPacket();
+            packet.fieldOverlay().setStroke("#D100FF");
+            Drawing.drawRobot(packet.fieldOverlay(), pose);
+
+            double velError1 = ((h.flywheel2.getVelocity() * 60) / 28) - fly.target2;
+            double velError2 = ((h.flywheel1.getVelocity() * 60) / 28) - fly.target;
+
+            double velError1f = ((h.flywheel2.getVelocity() * 60) / 37.333) - fly.target2;
+            double velError2f = ((h.flywheel1.getVelocity() * 60) / 37.333) - fly.target;
+
+            packet.put("encoder1 tps", h.flywheel1.getVelocity());
+            packet.put("encoder2 tps", h.flywheel2.getVelocity());
+            packet.put("VEL ERROR1 with motor as telem", velError1);
+            packet.put("VEL ERROR2 with motor as telem", velError2);
+            packet.put("VEL ERROR1 with flywheel as telem", velError1f);
+            packet.put("VEL ERROR2 with flywheel as telem", velError2f);
+            telemetry.addData("CURRENT MOTIF MEMORY", motif);
+            telemetry.addData("ACTIVE SORTING MOTIF", activeSortingMotif);
+            telemetry.addData("ARE SENSORS ALL TRUE?", all);
+            dashboard.sendTelemetryPacket(packet);
             telemetry.addData("hpos", hpos);
-            // Updated telemetry to use the new subsystem's method directly for clean RPM data
             telemetry.addData("RPM Flywheel Average", "%.3f", fly.getRotation(flywheelSub.MeasureUnit.REVOLUTIONS, flywheelSub.TimeScale.MINUTES));
             telemetry.addData("RPM flywheel 1", "%.3f", ((h.flywheel1.getVelocity() * 60) / 37.333));
             telemetry.addData("RPM flywheel 2", "%.3f", ((h.flywheel2.getVelocity() * 60) / 37.333));
+            telemetry.addData("RPM flywheel 1 motor", "%.3f", ((h.flywheel1.getVelocity() * 60) / 28));
+            telemetry.addData("RPM flywheel 2 motor", "%.3f", ((h.flywheel2.getVelocity() * 60) / 28));
             telemetry.addData("pip x in", h.pip.getPosX(DistanceUnit.INCH));
             telemetry.addData("heading", h.pip.getHeading(AngleUnit.DEGREES));
             telemetry.addData("pip y in", h.pip.getPosY(DistanceUnit.INCH));
@@ -1136,6 +749,7 @@ public class teleop extends LinearOpMode {
             telemetry.addData("odometry y", h.pip.getEncoderY());
             telemetry.addData("servo pos", servopos);
             telemetry.addData("servo angle", servoAngle);
+            telemetry.addData("Detected Motif", motif);
 
             telemetry.update();
         }

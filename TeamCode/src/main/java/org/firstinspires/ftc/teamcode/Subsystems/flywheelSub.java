@@ -29,8 +29,11 @@ public class flywheelSub {
 
     // --- Target & Distance Variables ---
     public volatile double target = 0;
+    public volatile double target2 = 0;
     public double hypot = 0; // OpMode must update this before calling loop()!
 
+    public double samOffsetV = 400;
+    public double samOffsetV2 = 400;
     private final DcMotorEx flywheel1;
     private final DcMotorEx flywheel2;
 
@@ -39,6 +42,16 @@ public class flywheelSub {
     public double kI = .05;
     public double kD = 0.000;
     public double kF = 0.0003;
+    public boolean up = false;
+    public boolean down = false;
+    public boolean prevUp = false;
+    public boolean prevDown = false;
+
+    public boolean up2 = false;
+    public boolean down2 = false;
+    public boolean prevUp2 = false;
+    public boolean prevDown2 = false;
+
 
     public volatile boolean loopActive = false;
     public PIDFController spinController = new PIDFController(kP, kI, kD, kF);
@@ -48,6 +61,8 @@ public class flywheelSub {
         flywheel2 = hardwareMap.get(DcMotorEx.class, "flywheel2");
         flywheel1.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
         flywheel2.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
+        flywheel1.setDirection(DcMotorEx.Direction.REVERSE);
+        flywheel2.setDirection(DcMotorEx.Direction.REVERSE);
     }
 
     public void loop() {
@@ -56,32 +71,76 @@ public class flywheelSub {
         // 1) Calculate target RPM into a temporary local variable first
         double newTarget = 0;
 
-        if (hypot < 75) {
-            newTarget = 11.091 * hypot + 1257.177;
-        } else if (hypot > 75 && hypot < 96.3) {
-            newTarget = 15.333 * hypot + 939.025;
-            //bad after here
-        } else if (hypot > 96.3 && hypot < 129) {
-            newTarget = 9.817 * hypot + 1079.623;
-        } else if (hypot > 151) {
-            newTarget = 11.727 * hypot + 833.217;
+        if (hypot < 72) {
+            newTarget = 2.083 * hypot + 1600.016;
+        } else if (hypot > 72 && hypot < 96) {
+            newTarget = 8.333 * hypot + 1150.024;
+        } else if (hypot > 96 && hypot < 120) {
+            newTarget = 16.667 * hypot + 349.968;
+        } else if (hypot > 120 && hypot < 144) {
+            newTarget = 6.25 * hypot + 1600;
+        } else if (hypot > 144) {
+            newTarget = 12.5 * hypot - 300;
         }
 
         // 2) Clip the local variable and assign it to the volatile 'target' in ONE atomic step
         target = Range.clip(newTarget, 0, 6000);
+        if (up && !prevUp && !down) {
+            samOffsetV = Range.clip(samOffsetV + 50, -2000, 2000);
+        }
+        if (down && !prevDown && !up) {
+            samOffsetV = Range.clip(samOffsetV - 50, -2000, 2000);
+        }
+
+        prevUp = up;
+        prevDown = down;
+
+        target = target + samOffsetV;
 
         // 2) Read sensors (using the dynamic gear ratio instead of hardcoded 37.333)
         double effectiveTPR = MOTOR_TICKS_PER_REV * EXTERNAL_GEAR_RATIO;
         double currentSpeed = (((flywheel1.getVelocity() + flywheel2.getVelocity()) / 2) * 60) / effectiveTPR;
 
         // 3) PID calculation
-        spinController.setPIDF(kP, kI, kD, kF);
         double pid = spinController.calculate(currentSpeed, target);
 
         // 4) Apply power (clip at ±1)
         double power = Math.max(-1, Math.min(1, pid));
+
+
+
         flywheel1.setPower(power);
         flywheel2.setPower(power);
+
+
+       /* // 2) Clip the local variable and assign it to the volatile 'target' in ONE atomic step
+        target2 = Range.clip(newTarget, 0, 6000);
+        if (up2 && !prevUp2 && !down2) {
+            samOffsetV2 = Range.clip(samOffsetV2 + 50, -2000, 2000);
+        }
+        if (down2 && !prevDown2 && !up2) {
+            samOffsetV2 = Range.clip(samOffsetV2 - 50, -2000, 2000);
+        }
+
+        prevUp2 = up2;
+        prevDown2 = down2;
+
+        target2 = target2 + samOffsetV2;
+
+        // 2) Read sensors (using the dynamic gear ratio instead of hardcoded 37.333)
+        double effectiveTPR2 = MOTOR_TICKS_PER_REV * EXTERNAL_GEAR_RATIO;
+        double currentSpeed2 = ((flywheel2.getVelocity() / 2) * 60) / effectiveTPR2;
+
+        // 3) PID calculation
+        double pid2 = spinController.calculate(currentSpeed2, target2);
+
+        // 4) Apply power (clip at ±1)
+        double power2 = Math.max(-1, Math.min(1, pid2));
+
+
+
+
+        flywheel2.setPower(power2);*/
     }
 
     /**

@@ -23,10 +23,10 @@ public class FlywheelTuningOpMode extends OpMode {
     //-------------------------------------------------------------------------
     // FTC Dashboard Live Variables
     //-------------------------------------------------------------------------
-    public double kP = .00033;
-    public double kI = .05;
-    public double kD = 0.000;
-    public double kF = 0.0003;
+    public static double kP = .00033;
+    public static double kI = .05;
+    public static double kD = 0.000;
+    public static double kF = 0.0003;
 
     public static double targetRPM = 2000; // Target velocity to test
 

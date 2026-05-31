@@ -1,7 +1,7 @@
 package org.firstinspires.ftc.teamcode.utility;
 
+import com.acmerobotics.dashboard.FtcDashboard;
 import com.pedropathing.util.Timer;
-import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -9,13 +9,11 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
-import com.seattlesolvers.solverslib.photon.PhotonCore;
+import com.seattlesolvers.solverslib.controller.PIDFController;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.VoltageUnit;
-import org.firstinspires.ftc.teamcode.GoBildaPinpointDriver;
+import org.firstinspires.ftc.teamcode.drivers.GoBildaPinpointDriver;
 import org.firstinspires.ftc.teamcode.Subsystems.hardwareSubNewBot;
 import org.firstinspires.ftc.teamcode.Subsystems.varSub;
 
@@ -26,7 +24,8 @@ public class tuninglinearequations extends LinearOpMode {
     public varSub var;
     public Timer swingTimer;
     Servo t, t2, hood;
-    DcMotorEx f1, f2;
+    private DcMotorEx flywheel1;
+    private DcMotorEx flywheel2;
     private IntakeState currentIntakeState = IntakeState.IDLE;
     private ElapsedTime intakeStateTimer = new ElapsedTime();
     private int cycleSubStep = 0; // Used for multi-step cycles like single-note and till-color
@@ -52,16 +51,6 @@ public class tuninglinearequations extends LinearOpMode {
         INTAKE_TILL_FULL_INIT,      // Triggered by gamepad1.ps
         INTAKE_TILL_FULL_RUNNING,   // Actively intaking until sensors are full
 
-        INTAKE_TILL_COLOR_INIT,     // Generic init for color cycles
-        INTAKE_TILL_COLOR_SWING_RESET, // Swing arm up, 500ms delay, then start intake cycle steps
-        INTAKE_TILL_COLOR_STEP_1,   // Part of the full intake cycle for 'till color'
-        INTAKE_TILL_COLOR_STEP_2,
-        INTAKE_TILL_COLOR_STEP_3,
-        INTAKE_TILL_COLOR_STEP_4,
-        INTAKE_TILL_COLOR_STEP_5,
-        INTAKE_TILL_COLOR_STEP_6,
-        INTAKE_TILL_COLOR_STEP_7,
-        INTAKE_TILL_COLOR_STEP_8, // Cycle step 8, then check color and loop if not found
 
         // Specific flags for which color processor to use during INTAKE_TILL_COLOR_RUNNING
         INTAKE_TILL_PPG, // right_stick_button
@@ -76,6 +65,25 @@ public class tuninglinearequations extends LinearOpMode {
     private boolean leftStickButtonWasPressed = false;
     private boolean rightStickButtonWasPressed = false; // Changed from original to prevent immediate re-trigger
 
+
+    // --- Hardware Constants ---
+    public static double MOTOR_TICKS_PER_REV = 28.0;
+    public static double EXTERNAL_GEAR_RATIO = 1.333333;
+
+    //-------------------------------------------------------------------------
+    // FTC Dashboard Live Variables
+    //-------------------------------------------------------------------------
+    public double kP = 0.0001;
+    public double kI = 0.001;
+    public double kD = 0.00001;
+    public double kF = 0.00026;
+
+    // FTCLib PIDFController
+    public PIDFController flywheelController = new PIDFController(kP, kI, kD, kF);
+
+    // Dashboard instance
+    private FtcDashboard dashboard;
+
     @Override
     public void runOpMode() {
         h = new hardwareSubNewBot(hardwareMap);
@@ -85,20 +93,33 @@ public class tuninglinearequations extends LinearOpMode {
         hood = hardwareMap.get(Servo.class, "hood");
         t = hardwareMap.get(Servo.class, "turret");
         t2 = hardwareMap.get(Servo.class, "turret2");
-        f1 = hardwareMap.get(DcMotorEx.class, "flywheel1");
-        f2 = hardwareMap.get(DcMotorEx.class, "flywheel2");
+        flywheel1 = hardwareMap.get(DcMotorEx.class, "flywheel1");
+        flywheel2 = hardwareMap.get(DcMotorEx.class, "flywheel2");
 
         hood.setDirection(Servo.Direction.REVERSE);
-        f1.setDirection(DcMotorEx.Direction.REVERSE);
-        f2.setDirection(DcMotorEx.Direction.REVERSE);
+        flywheel1.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        flywheel2.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        flywheel1.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        flywheel2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+        flywheel1.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+        flywheel2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+        flywheel1.setDirection(DcMotorEx.Direction.REVERSE);
+        flywheel2.setDirection(DcMotorEx.Direction.REVERSE);
+
+        // Get the FTC Dashboard instance
+        dashboard = FtcDashboard.getInstance();
 
         double sp = 0.5;
+        double spt = 0.5;
         double v = 0;
 
         boolean prevxx = false;
         boolean prevbb = false;
         boolean prevaa = false;
         boolean prevyy = false;
+        boolean prevll = false;
+        boolean prevrr = false;
 
         double target_y = 72;
         double target_x = -72;
@@ -124,7 +145,9 @@ public class tuninglinearequations extends LinearOpMode {
         Servo swingArm = hardwareMap.get(Servo.class, "swingArm");
 
 
-        pip.setOffsets(48.591, -129.909, DistanceUnit.MM);
+        double mmPerTick = 0.00197895600191183 * 25.4;
+        // TODO: Use tunable parameters instead of hardcoded values if possible.
+        pip.setOffsets( mmPerTick * -985.8987870798854, mmPerTick * -3119.0758671134577, DistanceUnit.MM);
         pip.setBulkReadScope(defaultRegisters);
         pip.setErrorDetectionType(GoBildaPinpointDriver.ErrorDetectionType.CRC);
         pip.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
@@ -137,14 +160,30 @@ public class tuninglinearequations extends LinearOpMode {
         hood.setDirection(Servo.Direction.REVERSE);
         t.setDirection(Servo.Direction.REVERSE);
         t2.setDirection(Servo.Direction.REVERSE);
-        PhotonCore.CONTROL_HUB.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
-        PhotonCore.EXPANSION_HUB.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
-        PhotonCore.PARALLELIZE_SERVOS = true;
-        PhotonCore.enable();
         waitForStart();
 
         while (opModeIsActive()) {
-            t.setPosition(0.5);
+
+
+            /*turret*/
+            {
+                boolean ll = gamepad1.dpad_left;
+                boolean rr = gamepad1.dpad_right;
+
+                if (ll && !prevll && !rr) {
+                    spt = Range.clip(spt - 0.01, 0, 1);
+                }
+                if (rr && !prevrr && !ll) {
+                    spt = Range.clip(spt + 0.01, 0, 1);
+                }
+
+                // update prev AFTER using them
+                prevll = ll;
+                prevrr = rr;
+
+                t.setPosition(spt);
+                t2.setPosition(spt);
+            }
 
             /*hood*/
             {
@@ -166,7 +205,7 @@ public class tuninglinearequations extends LinearOpMode {
             }
 
             /*flywheel*/
-            {
+
                 boolean aa = gamepad1.a;
                 boolean yy = gamepad1.y;
 
@@ -181,16 +220,24 @@ public class tuninglinearequations extends LinearOpMode {
                 prevaa = aa;
                 prevyy = yy;
 
-                // apply velocity after updating v so it changes immediately
-                f1.setVelocity(v);
-                f2.setVelocity(v);
-            }
+                // Ensure the controller is updated from dashboard values
+                flywheelController.setPIDF(kP, kI, kD, kF); // We use manual feedforward logic for kF if preferred, or include it
+                // Calculate true actual RPM
+                double effectiveTPR = MOTOR_TICKS_PER_REV * EXTERNAL_GEAR_RATIO;
+                double ticksPerSec = (flywheel1.getVelocity() + flywheel2.getVelocity()) / 2.0;
+                double currentRPM = (flywheel1.getVelocity() * 60) / 37.333;
 
-            telemetry.addData("photon volts aux", PhotonCore.CONTROL_HUB.getAuxiliaryVoltage(VoltageUnit.VOLTS));
-            telemetry.addData("photon amps ", PhotonCore.CONTROL_HUB.getCurrent(CurrentUnit.AMPS));
-            telemetry.addData("expantion photon amps ", PhotonCore.EXPANSION_HUB.getCurrent(CurrentUnit.AMPS));
-            telemetry.addData("total photon amps ", PhotonCore.CONTROL_HUB.getCurrent(CurrentUnit.AMPS) + PhotonCore.EXPANSION_HUB.getCurrent(CurrentUnit.AMPS));
-            telemetry.addData("photon info ", PhotonCore.CONTROL_HUB.getConnectionInfo());
+
+                // 2) PID calculation (target & k’s are expected to be updated elsewhere)
+                double pid = flywheelController.calculate(currentRPM, v);
+
+
+                // 4) Apply power (clip at ±1)
+                double power = Math.max(-1, Math.min(1, pid));
+                flywheel1.setPower(power); // preserve original scaling
+                flywheel2.setPower(power); // preserve original scaling
+
+
 
             // Debounce gamepad1 buttons for intake control
             boolean currentDpadLeft = gamepad1.dpad_left;
@@ -398,18 +445,36 @@ public class tuninglinearequations extends LinearOpMode {
             double yl = target_y - pip.getPosY(DistanceUnit.INCH);
             double hypot = Math.sqrt((xl * xl) + (yl * yl));
 
-            telemetry.addData("x leg", xl);
-            telemetry.addData("y leg", yl);
+            // Standard Telemetry
             telemetry.addData("hypot", hypot);
             telemetry.addData("servo pos", sp);
+            telemetry.addData("servo pos turret", spt);
             telemetry.addData("vels", v);
-            telemetry.addData("RPM flywheel 1", "%.3f", ((f1.getVelocity() * 60) / 37.333));
-            telemetry.addData("RPM flywheel 2", "%.3f", ((f2.getVelocity() * 60) / 37.333));
-            telemetry.addData("vel ticks flywheel 1", "%.3f", (f1.getVelocity()));
-            telemetry.addData("vel ticks flywheel 2", "%.3f", (f2.getVelocity()));
+            telemetry.addData("x leg", xl);
+            telemetry.addData("y leg", yl);
+            telemetry.addData("RPM flywheel 1", "%.3f", ((flywheel1.getVelocity() * 60) / 37.333));
+            telemetry.addData("RPM flywheel 2", "%.3f", ((flywheel2.getVelocity() * 60) / 37.333));
+            telemetry.addData("vel ticks flywheel 1", "%.3f", (flywheel1.getVelocity()));
+            telemetry.addData("vel ticks flywheel 2", "%.3f", (flywheel2.getVelocity()));
             telemetry.addData("pip x in", pip.getPosX(DistanceUnit.INCH));
             telemetry.addData("heading", pip.getHeading(AngleUnit.DEGREES));
             telemetry.addData("pip y in", pip.getPosY(DistanceUnit.INCH));
+
+            // Dashboard Telemetry
+            dashboard.getTelemetry().addData("x leg", xl);
+            dashboard.getTelemetry().addData("y leg", yl);
+            dashboard.getTelemetry().addData("hypot", hypot);
+            dashboard.getTelemetry().addData("servo pos", sp);
+            dashboard.getTelemetry().addData("vels", v);
+            dashboard.getTelemetry().addData("Target RPM", v);
+            dashboard.getTelemetry().addData("Actual RPM", currentRPM);
+            dashboard.getTelemetry().addData("Motor Power", power);
+            dashboard.getTelemetry().addData("1 Motor vel", flywheel1.getVelocity());
+            dashboard.getTelemetry().addData("2 Motor vel", flywheel2.getVelocity());
+            dashboard.getTelemetry().addData("RPM flywheel 1", ((flywheel1.getVelocity() * 60) / 37.333));
+            dashboard.getTelemetry().addData("RPM flywheel 2", ((flywheel2.getVelocity() * 60) / 37.333));
+            dashboard.getTelemetry().update();
+
             telemetry.update();
         }
     }

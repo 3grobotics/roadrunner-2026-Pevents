@@ -41,11 +41,12 @@ import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
-import org.firstinspires.ftc.teamcode.messages.DriveCommandMessage;
-import org.firstinspires.ftc.teamcode.messages.MecanumCommandMessage;
-import org.firstinspires.ftc.teamcode.messages.MecanumLocalizerInputsMessage;
-import org.firstinspires.ftc.teamcode.messages.PoseMessage;
+import org.firstinspires.ftc.teamcode.roadrunner.messages.DriveCommandMessage;
+import org.firstinspires.ftc.teamcode.roadrunner.messages.MecanumCommandMessage;
+import org.firstinspires.ftc.teamcode.roadrunner.messages.MecanumLocalizerInputsMessage;
+import org.firstinspires.ftc.teamcode.roadrunner.messages.PoseMessage;
 
+import java.lang.Math;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -63,30 +64,31 @@ public final class MecanumDrive {
 
         // drive model parameters
         public double inPerTick = 0.00197895600191183;//0.0019969644252354;
-        public double lateralInPerTick = inPerTick; //0.00129528727878890585;
-        public double trackWidthTicks = 4465.702571573392;//4480.68607978299;
+        public double lateralInPerTick = 0.0015676501527035055; //0.00129528727878890585;
+        public double trackWidthTicks = 4443.723219666959;//4480.68607978299;
 
         // feedforward parameters (in tick units)
-        public double kS = 1.551337846146942;
-        public double kV = 0.00031954372479617;
-        public double kA = .00009;
+        public double kS = 1.564495556141269;
+        public double kV = 0.0003185366657277809;
+        public double kA = 0.00008;
+
         // path profile parameters (in inches)
-        public double maxWheelVel = 275;
+        public double maxWheelVel = 75;
         public double minProfileAccel = -30;
-        public double maxProfileAccel = 100;
+        public double maxProfileAccel = 75;
 
         // turn profile parameters (in radians)
         public double maxAngVel = Math.PI; // shared with path
         public double maxAngAccel = Math.PI;
 
         // path controller gains
-        public double axialGain   = 30;//.35;
-        public double lateralGain = 20;//10;
-        public double headingGain = 30;//20; // shared with turn
+        public double axialGain   = 5.0;
+        public double lateralGain = 5.5;
+        public double headingGain = 13.0; // shared with turn
 
-        public double axialVelGain   = 1.5; //2;
-        public double lateralVelGain = .5;//.5;
-        public double headingVelGain = 2;//.1; // shared with turn
+        public double axialVelGain = 0.0;
+        public double lateralVelGain = 0.0;
+        public double headingVelGain = 0.0; // shared with turn
     }
 
     public static Params PARAMS = new Params();
