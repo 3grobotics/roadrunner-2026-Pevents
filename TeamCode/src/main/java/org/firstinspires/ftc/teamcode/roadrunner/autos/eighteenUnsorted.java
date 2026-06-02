@@ -9,6 +9,7 @@ import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.PoseVelocity2d;
 import com.acmerobotics.roadrunner.SequentialAction;
 import com.acmerobotics.roadrunner.Vector2d;
+import com.acmerobotics.roadrunner.Vector2dDual;
 import com.acmerobotics.roadrunner.VelConstraint;
 import com.acmerobotics.roadrunner.ftc.Actions;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
@@ -173,8 +174,8 @@ public class eighteenUnsorted extends LinearOpMode {
 
         private class turret1 implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                turret1.setPosition(.29);
-                turret2.setPosition(.29);
+                turret1.setPosition(.28);
+                turret2.setPosition(.28);
                 return false;
             }
         }
@@ -182,8 +183,8 @@ public class eighteenUnsorted extends LinearOpMode {
 
         private class turret2 implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                turret1.setPosition(.14);
-                turret2.setPosition(.14);
+                turret1.setPosition(.13);
+                turret2.setPosition(.13);
                 return false;
             }
         }
@@ -278,6 +279,34 @@ public class eighteenUnsorted extends LinearOpMode {
                 return 50.0;
             }
         };
+        VelConstraint baseVelConstraint3 = (robotPose, _path, _disp) -> {
+            if (robotPose.position.x.value() > 5 && robotPose.position.y.value() > 45) {
+                return 15;
+            } else {
+                return 50.0;
+            }
+        };
+
+        Vector2d targetSpot = new Vector2d(-25, 25); // Static target point
+        double slowZoneRadius = 24.0;
+
+        VelConstraint proximitySlowdownConstraint = (robotPose, _path, _disp) -> {
+            // Extract the raw Vector2d value from the Vector2dDual
+            Vector2d currentPosition = robotPose.position.value();
+
+            // Now you can safely use standard vector subtraction and norm()
+            double distance = currentPosition.minus(targetSpot).norm();
+
+            double maxSpeed = 50.0;
+            double slowSpeed = 15.0;
+
+            if (distance < slowZoneRadius) {
+                double factor = distance / slowZoneRadius;
+                return slowSpeed + (maxSpeed - slowSpeed) * factor;
+            }
+
+            return maxSpeed;
+        };
 
         /* ---- Poses & Actions ---- */
         Pose2d initialPose = new Pose2d(-53, 53, Math.toRadians(37.5));
@@ -299,7 +328,7 @@ public class eighteenUnsorted extends LinearOpMode {
 
                 .afterDisp(10, robot.fire())
                 .setTangent(Math.toRadians(315))
-                .splineToSplineHeading(new Pose2d(-25, 25, Math.toRadians(37)), Math.toRadians(315))
+                .splineToSplineHeading(new Pose2d(-25, 25, Math.toRadians(37)), Math.toRadians(315), proximitySlowdownConstraint)
 
                 // intake first spike (fourth, fifth and sixth artifact pickup)
                 .afterDisp(0, robot.intake())
@@ -328,21 +357,29 @@ public class eighteenUnsorted extends LinearOpMode {
                 .waitSeconds(1)
                 .stopAndAdd(robot.stopFire())
 
-             /*   //cc here
+                //cc here
 
                 // first gate pickup (thirteenth, fourteenth and fifteenth artifact pickup)
                 .afterDisp(0, robot.intake())
                 .setTangent(Math.toRadians(0))
-                .splineToLinearHeading(new Pose2d(0, 24, Math.toRadians(90)), Math.toRadians(90))
+                .splineToSplineHeading(new Pose2d(0, 24, Math.toRadians(90)), Math.toRadians(90))
+                //        .waitSeconds(.5)
                 .setTangent(Math.toRadians(90))
-                .splineToLinearHeading(new Pose2d(5, 55, Math.toRadians(90)), Math.toRadians(90))
+                .splineToLinearHeading(new Pose2d(6, 47, Math.toRadians(90)), Math.toRadians(90))
+                //.waitSeconds(.5)
+
                 .setTangent(Math.toRadians(90))
-                .splineToSplineHeading(new Pose2d(15, 60, Math.toRadians(135)), Math.toRadians(45))
+                .splineToSplineHeading(new Pose2d(6, 56, Math.toRadians(100)), Math.toRadians(90), baseVelConstraint3)
+                //.waitSeconds(.5)
+                .setTangent(Math.toRadians(90))
+                .splineToLinearHeading(new Pose2d(15, 57, Math.toRadians(120)), Math.toRadians(45))
+
+
                 .waitSeconds(.5)
-                .stopAndAdd(robot.stopFire())
+                //.stopAndAdd(robot.stopFire())
 
                 // drive to zone for first gate pickup shot (fourth, fifth and sixth artifact shot)
-                //.afterDisp(5, robot.stopFire())
+                .afterDisp(10, robot.stopFire())
                 .afterDisp(5, robot.turret2())
                 .setTangent(Math.toRadians(270))
                 .splineToLinearHeading(new Pose2d(5, 36, Math.toRadians(90)), Math.toRadians(270))
@@ -355,16 +392,21 @@ public class eighteenUnsorted extends LinearOpMode {
                 // first gate pickup (thirteenth, fourteenth and fifteenth artifact pickup)
                 .afterDisp(0, robot.intake())
                 .setTangent(Math.toRadians(0))
-                .splineToLinearHeading(new Pose2d(0, 24, Math.toRadians(90)), Math.toRadians(90))
+                .splineToSplineHeading(new Pose2d(0, 24, Math.toRadians(90)), Math.toRadians(90))
                 .setTangent(Math.toRadians(90))
-                .splineToLinearHeading(new Pose2d(5, 55, Math.toRadians(90)), Math.toRadians(90))
-                .setTangent(Math.toRadians(90))
-                .splineToSplineHeading(new Pose2d(15, 60, Math.toRadians(135)), Math.toRadians(45))
-                .waitSeconds(.5)
-                .stopAndAdd(robot.stopFire())
+                .splineToLinearHeading(new Pose2d(6, 47, Math.toRadians(90)), Math.toRadians(90))
+                //.waitSeconds(.5)
 
-                // drive to zone for first spike mark shot (fourth, fifth and sixth artifact shot)
-                //.afterDisp(5, robot.stopFire())
+                .setTangent(Math.toRadians(90))
+                .splineToSplineHeading(new Pose2d(6, 56, Math.toRadians(120)), Math.toRadians(90), baseVelConstraint3)
+                .setTangent(Math.toRadians(90))
+                .splineToLinearHeading(new Pose2d(10, 59, Math.toRadians(120)), Math.toRadians(45))
+
+                .waitSeconds(.5)
+                //.stopAndAdd(robot.stopFire())
+
+                // drive to zone for first gate pickup shot (fourth, fifth and sixth artifact shot)
+                .afterDisp(10, robot.stopFire())
                 .afterDisp(5, robot.turret2())
                 .setTangent(Math.toRadians(270))
                 .splineToLinearHeading(new Pose2d(5, 36, Math.toRadians(90)), Math.toRadians(270))
@@ -375,7 +417,7 @@ public class eighteenUnsorted extends LinearOpMode {
                 .stopAndAdd(robot.stopFire())
 
 
-                // intake second spike mark (seventh, eighth and ninth artifact pickup)
+              /*  // intake second spike mark (seventh, eighth and ninth artifact pickup)
                 .afterDisp(0, robot.intake())
                 .setTangent(Math.toRadians(90))
                 .splineToLinearHeading(new Pose2d(-12, 48, Math.toRadians(45)), Math.toRadians(30))

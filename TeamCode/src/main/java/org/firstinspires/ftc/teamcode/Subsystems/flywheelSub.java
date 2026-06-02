@@ -32,7 +32,7 @@ public class flywheelSub {
     public volatile double target2 = 0;
     public double hypot = 0; // OpMode must update this before calling loop()!
 
-    public double samOffsetV = 400;
+    public double samOffsetV = 300;
     public double samOffsetV2 = 400;
     private final DcMotorEx flywheel1;
     private final DcMotorEx flywheel2;

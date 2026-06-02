@@ -5,4 +5,5 @@ include ':meepmeep2'
 
 // The Bulletproof Link: Force Gradle to see the folder as a local module
 include ':MeepMeepSource'
-project(':MeepMeepSource').projectDir = new File('C:/Users/3gofn/Downloads/MeepMeep-master/MeepMeep-master')
+project(':MeepMeepSource').projectDir = new File('D:\\Gage ssd files use this\\Downloads\\MeepMeep-master\\MeepMeep-master')
+//project(':MeepMeepSource').projectDir = new File('C:/Users/3gofn/Downloads/MeepMeep-master/MeepMeep-master')
