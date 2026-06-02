@@ -372,6 +372,7 @@ public class eighteenUnsorted extends LinearOpMode {
                 .splineToSplineHeading(new Pose2d(6, 56, Math.toRadians(100)), Math.toRadians(90), baseVelConstraint3)
                 //.waitSeconds(.5)
                 .setTangent(Math.toRadians(90))
+
                 .splineToLinearHeading(new Pose2d(15, 57, Math.toRadians(120)), Math.toRadians(45))
 
 
