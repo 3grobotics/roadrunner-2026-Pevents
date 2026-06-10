@@ -52,7 +52,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 @Config
-public final class MecanumDrive {
+public final class MecanumDrive3 {
     public static class Params {
         // IMU orientation
         // TODO: fill in these values based on
@@ -73,9 +73,9 @@ public final class MecanumDrive {
         public double kA = 0.00008;
 
         // path profile parameters (in inches)
-        public double maxWheelVel = 75;
-        public double minProfileAccel = -30;
-        public double maxProfileAccel = 75;
+        public double maxWheelVel = 1000;
+        public double minProfileAccel = -70;
+        public double maxProfileAccel = 1000;
 
         // turn profile parameters (in radians)
         public double maxAngVel = Math.PI; // shared with path
@@ -130,10 +130,10 @@ public final class MecanumDrive {
         private Pose2d pose;
 
         public DriveLocalizer(Pose2d pose) {
-            leftFront = new OverflowEncoder(new RawEncoder(MecanumDrive.this.frontLeft));
-            leftBack = new OverflowEncoder(new RawEncoder(MecanumDrive.this.backLeft));
-            rightBack = new OverflowEncoder(new RawEncoder(MecanumDrive.this.backRight));
-            rightFront = new OverflowEncoder(new RawEncoder(MecanumDrive.this.frontRight));
+            leftFront = new OverflowEncoder(new RawEncoder(MecanumDrive3.this.frontLeft));
+            leftBack = new OverflowEncoder(new RawEncoder(MecanumDrive3.this.backLeft));
+            rightBack = new OverflowEncoder(new RawEncoder(MecanumDrive3.this.backRight));
+            rightFront = new OverflowEncoder(new RawEncoder(MecanumDrive3.this.frontRight));
 
             imu = lazyImu.get();
 
@@ -216,7 +216,7 @@ public final class MecanumDrive {
         }
     }
 
-    public MecanumDrive(HardwareMap hardwareMap, Pose2d pose) {
+    public MecanumDrive3(HardwareMap hardwareMap, Pose2d pose) {
         LynxFirmware.throwIfModulesAreOutdated(hardwareMap);
 
         for (LynxModule module : hardwareMap.getAll(LynxModule.class)) {
@@ -236,8 +236,8 @@ public final class MecanumDrive {
         frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         // TODO: reverse motor directions if needed
-           frontRight.setDirection(DcMotorSimple.Direction.REVERSE);
-           backRight.setDirection(DcMotorSimple.Direction.REVERSE);
+        frontRight.setDirection(DcMotorSimple.Direction.REVERSE);
+        backRight.setDirection(DcMotorSimple.Direction.REVERSE);
 
         // TODO: make sure your config has an IMU with this name (can be BNO or BHI)
         //   see https://ftc-docs.firstinspires.org/en/latest/hardware_and_software_configuration/configuring/index.html
@@ -452,14 +452,14 @@ public final class MecanumDrive {
     public PoseVelocity2d updatePoseEstimate() {
         PoseVelocity2d vel = localizer.update();
         poseHistory.add(localizer.getPose());
-        
+
         while (poseHistory.size() > 100) {
             poseHistory.removeFirst();
         }
 
         estimatedPoseWriter.write(new PoseMessage(localizer.getPose()));
-        
-        
+
+
         return vel;
     }
 
@@ -493,26 +493,6 @@ public final class MecanumDrive {
                 beginPose, 0.0,
                 defaultTurnConstraints,
                 defaultVelConstraint, defaultAccelConstraint
-        );
-    }
-
-    public TrajectoryActionBuilder mirroredActionBuilder(Pose2d beginPose) {
-        return new TrajectoryActionBuilder(
-                TurnAction::new,
-                FollowTrajectoryAction::new,
-                new TrajectoryBuilderParams(
-                        1e-6,
-                        new ProfileParams(
-                                0.25, 0.1, 1e-2
-                        )
-                ),
-                beginPose,
-                0.0,
-                defaultTurnConstraints,
-                defaultVelConstraint,
-                defaultAccelConstraint,
-                pose -> new Pose2dDual<>(
-                        pose.position.x, pose.position.y.unaryMinus(), pose.heading.inverse())
         );
     }
 }

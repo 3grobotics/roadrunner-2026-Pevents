@@ -16,9 +16,10 @@ public class LocalizationTest extends LinearOpMode {
     @Override
     public void runOpMode() throws InterruptedException {
         telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
+        Pose2d initialPose = new Pose2d(-49, -53, Math.toRadians(-34.7));
 
         if (TuningOpModes.DRIVE_CLASS.equals(MecanumDrive.class)) {
-            MecanumDrive drive = new MecanumDrive(hardwareMap, new Pose2d(-53, 53, Math.toRadians(37.5)));
+            MecanumDrive drive = new MecanumDrive(hardwareMap, initialPose);
 
             waitForStart();
 

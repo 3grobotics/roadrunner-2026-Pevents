@@ -32,8 +32,8 @@ public class flywheelSub {
     public volatile double target2 = 0;
     public double hypot = 0; // OpMode must update this before calling loop()!
 
-    public double samOffsetV = 300;
-    public double samOffsetV2 = 400;
+    public double samOffsetV = 0;
+    public double samOffsetV2 = 0;
     private final DcMotorEx flywheel1;
     private final DcMotorEx flywheel2;
 
@@ -54,6 +54,7 @@ public class flywheelSub {
     public boolean prevDown2 = false;
 
 
+    public double voltage;
     public volatile boolean loopActive = false;
     public PIDFController spinController = new PIDFController(kP, kI, kD, kF);
 
@@ -81,22 +82,24 @@ public class flywheelSub {
         } else if (hypot > 120 && hypot < 144) {
             newTarget = 6.25 * hypot + 1600;
         } else if (hypot > 144) {
-            newTarget = 12.5 * hypot - 300;
+            newTarget = 12.5 * hypot + 700;
         }
 
         // 2) Clip the local variable and assign it to the volatile 'target' in ONE atomic step
         target = Range.clip(newTarget, 0, 6000);
         if (up && !prevUp && !down) {
-            samOffsetV = Range.clip(samOffsetV + 50, -2000, 2000);
+            samOffsetV2 = Range.clip(samOffsetV2 + 50, -2000, 2000);
         }
         if (down && !prevDown && !up) {
-            samOffsetV = Range.clip(samOffsetV - 50, -2000, 2000);
+            samOffsetV2 = Range.clip(samOffsetV2 - 50, -2000, 2000);
         }
 
         prevUp = up;
         prevDown = down;
 
-        target = target + samOffsetV;
+        samOffsetV = -230.769 * voltage + 2715.382;
+        double finalOffset = samOffsetV + samOffsetV2;
+        target = target + finalOffset;
 
         // 2) Read sensors (using the dynamic gear ratio instead of hardcoded 37.333)
         double effectiveTPR = MOTOR_TICKS_PER_REV * EXTERNAL_GEAR_RATIO;
@@ -107,7 +110,6 @@ public class flywheelSub {
 
         // 4) Apply power (clip at ±1)
         double power = Math.max(-1, Math.min(1, pid));
-
 
 
         flywheel1.setPower(power);

@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.roadrunner.autos;
+package org.firstinspires.ftc.teamcode.roadrunner.autos.close;
 
 import androidx.annotation.NonNull;
 
@@ -8,8 +8,6 @@ import com.acmerobotics.roadrunner.ParallelAction;
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.PoseVelocity2d;
 import com.acmerobotics.roadrunner.SequentialAction;
-import com.acmerobotics.roadrunner.Vector2d;
-import com.acmerobotics.roadrunner.Vector2dDual;
 import com.acmerobotics.roadrunner.VelConstraint;
 import com.acmerobotics.roadrunner.ftc.Actions;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
@@ -18,14 +16,15 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.teamcode.Subsystems.flywheelSub;
 import org.firstinspires.ftc.teamcode.drivers.GoBildaPinpointDriver;
 import org.firstinspires.ftc.teamcode.roadrunner.MecanumDrive;
 
-@Autonomous(name = "18 unsorted", group = "competition")
-public class eighteenUnsorted extends LinearOpMode {
+@Autonomous(name = "red 12 unsorted 3 spike 1 flush", group = "competition")
+public class twelveUnsorted extends LinearOpMode {
 
     /* ──────────────── hardware ──────────────── */
     private DcMotor intake;
@@ -46,8 +45,11 @@ public class eighteenUnsorted extends LinearOpMode {
 
     double vx;
     double vy;
-    double offset = 20;
+    double offset = 10;
     public flywheelSub fly;
+    private VoltageSensor controlHubVoltageSensor;
+    double currentVoltage;
+
 
     public class Robot {
 
@@ -127,9 +129,10 @@ public class eighteenUnsorted extends LinearOpMode {
                     } else if ( hypot > 121) {
                         t                      = -0.004 * hypot + 1.317;
                     }
-
+                    currentVoltage = controlHubVoltageSensor.getVoltage();
                     fly.runFlywheel();
-                    fly.hypot = hypot; // Pass fresh data first
+                    fly.hypot = hypot + offset; // Pass fresh data first
+                    fly.voltage = currentVoltage;
                     fly.loop();        // Calculate power
 
                     if (hypot < 75) {
@@ -164,9 +167,17 @@ public class eighteenUnsorted extends LinearOpMode {
         }
         public Action flywheelUpPre() { return new flywheelUpPre(); }
 
+        private class raiseVelocity implements Action {
+            @Override public boolean run(@NonNull TelemetryPacket p) {
+                offset = 0;
+                return false;
+            }
+        }
+        public Action raiseVelocity() { return new raiseVelocity(); }
+
         private class lowerVelocity implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                offset = 5;
+                offset = 0;
                 return false;
             }
         }
@@ -174,8 +185,8 @@ public class eighteenUnsorted extends LinearOpMode {
 
         private class turret1 implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                turret1.setPosition(.28);
-                turret2.setPosition(.28);
+                turret1.setPosition(.27);
+                turret2.setPosition(.27);
                 return false;
             }
         }
@@ -183,8 +194,8 @@ public class eighteenUnsorted extends LinearOpMode {
 
         private class turret2 implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                turret1.setPosition(.13);
-                turret2.setPosition(.13);
+                turret1.setPosition(.14);
+                turret2.setPosition(.14);
                 return false;
             }
         }
@@ -225,8 +236,10 @@ public class eighteenUnsorted extends LinearOpMode {
         hood.setDirection(Servo.Direction.REVERSE);
         indexer.setDirection(DcMotorEx.Direction.REVERSE);
         intake.setDirection(DcMotorEx.Direction.REVERSE);
+        controlHubVoltageSensor = hardwareMap.get(VoltageSensor.class, "Control Hub");
 
         fly = new flywheelSub(hardwareMap);
+
 
         /* ---- S Selection (Toggle) ---- */
         int S = 1; // 1 = Red, -1 = Blue
@@ -279,33 +292,9 @@ public class eighteenUnsorted extends LinearOpMode {
                 return 50.0;
             }
         };
-        VelConstraint baseVelConstraint3 = (robotPose, _path, _disp) -> {
-            if (robotPose.position.x.value() > 5 && robotPose.position.y.value() > 45) {
-                return 15;
-            } else {
-                return 50.0;
-            }
-        };
 
-        Vector2d targetSpot = new Vector2d(-25, 25); // Static target point
-        double slowZoneRadius = 24.0;
-
-        VelConstraint proximitySlowdownConstraint = (robotPose, _path, _disp) -> {
-            // Extract the raw Vector2d value from the Vector2dDual
-            Vector2d currentPosition = robotPose.position.value();
-
-            // Now you can safely use standard vector subtraction and norm()
-            double distance = currentPosition.minus(targetSpot).norm();
-
-            double maxSpeed = 50.0;
-            double slowSpeed = 15.0;
-
-            if (distance < slowZoneRadius) {
-                double factor = distance / slowZoneRadius;
-                return slowSpeed + (maxSpeed - slowSpeed) * factor;
-            }
-
-            return maxSpeed;
+        VelConstraint adaptiveBrakeneoooom = (robotPose, path, pathPos) -> {
+            return 10000;
         };
 
         /* ---- Poses & Actions ---- */
@@ -322,122 +311,83 @@ public class eighteenUnsorted extends LinearOpMode {
         // Pathing Definitions
         Action TEST = drive.actionBuilder(initialPose)
 
-                // first volley driving away from zone (first, second and third artifact shot)
-                .waitSeconds(.75)
-                .afterDisp(0, robot.turret1())
+                    // first volley driving away from zone (first, second and third artifact shot)
+                    .waitSeconds(1)
+                    .afterDisp(0, robot.turret1())
+                    .afterDisp(0, robot.raiseVelocity())
 
-                .afterDisp(10, robot.fire())
-                .setTangent(Math.toRadians(315))
-                .splineToSplineHeading(new Pose2d(-25, 25, Math.toRadians(37)), Math.toRadians(315), proximitySlowdownConstraint)
+                    .afterDisp(10, robot.fire())
+                    .setTangent(Math.toRadians(315))
+                    .splineToSplineHeading(new Pose2d(-25, 25, Math.toRadians(37)), Math.toRadians(315))
 
-                // intake first spike (fourth, fifth and sixth artifact pickup)
-                .afterDisp(0, robot.intake())
-                .setTangent(Math.toRadians(0))
-                .splineToSplineHeading(new Pose2d(9, 30, Math.toRadians(90)), Math.toRadians(90))
-                //.waitSeconds(.5)
-                .setTangent(Math.toRadians(90))
-                .splineToLinearHeading(new Pose2d(9, 45, Math.toRadians(90)), Math.toRadians(90), slow_as_hell)
-                 //      .waitSeconds(.5)
-                .setTangent(Math.toRadians(90))
-                .splineToLinearHeading(new Pose2d(8, 47, Math.toRadians(120)), Math.toRadians(115))
-               //.waitSeconds(.5)
+                    // intake first spike (fourth, fifth and sixth artifact pickup)
+                    .afterDisp(0, robot.lowerVelocity())
+                    .afterDisp(0, robot.intake())
+                    .setTangent(Math.toRadians(0))
+                    .splineToSplineHeading(new Pose2d(9, 30, Math.toRadians(90)), Math.toRadians(90))
+                    //.waitSeconds(.5)
+                    .setTangent(Math.toRadians(90))
+                    .splineToLinearHeading(new Pose2d(9, 45, Math.toRadians(90)), Math.toRadians(90), slow_as_hell)
 
-                .setTangent(Math.toRadians(90))
-                .splineToLinearHeading(new Pose2d(6, 55, Math.toRadians(90)), Math.toRadians(90))
-
-
-                // drive to zone for first spike mark shot (fourth, fifth and sixth artifact shot)
-                //.afterDisp(5, robot.stopFire())
-                .afterDisp(5, robot.turret2())
-                .setTangent(Math.toRadians(270))
-                .splineToLinearHeading(new Pose2d(5, 36, Math.toRadians(90)), Math.toRadians(270))
-                .setTangent(Math.toRadians(270))
-                .splineToSplineHeading(new Pose2d(-20, 18, Math.toRadians(90)), Math.toRadians(225))
-                .stopAndAdd(robot.fire())
-                .waitSeconds(1)
-                .stopAndAdd(robot.stopFire())
-
-                //cc here
-
-                // first gate pickup (thirteenth, fourteenth and fifteenth artifact pickup)
-                .afterDisp(0, robot.intake())
-                .setTangent(Math.toRadians(0))
-                .splineToSplineHeading(new Pose2d(0, 24, Math.toRadians(90)), Math.toRadians(90))
-                //        .waitSeconds(.5)
-                .setTangent(Math.toRadians(90))
-                .splineToLinearHeading(new Pose2d(6, 47, Math.toRadians(90)), Math.toRadians(90))
-                //.waitSeconds(.5)
-
-                .setTangent(Math.toRadians(90))
-                .splineToSplineHeading(new Pose2d(6, 56, Math.toRadians(100)), Math.toRadians(90), baseVelConstraint3)
-                //.waitSeconds(.5)
-                .setTangent(Math.toRadians(90))
-
-                .splineToLinearHeading(new Pose2d(15, 57, Math.toRadians(120)), Math.toRadians(45))
+                    // flush
+                    .setTangent(Math.toRadians(180))
+                    .splineToSplineHeading(new Pose2d(5, 45, Math.toRadians(90)), Math.toRadians(180), slow_as_hell)
+                    .setTangent(Math.toRadians(180))
+                    .splineToLinearHeading(new Pose2d(5, 55, Math.toRadians(90)), Math.toRadians(90), slow_as_hell)
 
 
-                .waitSeconds(.5)
-                //.stopAndAdd(robot.stopFire())
-
-                // drive to zone for first gate pickup shot (fourth, fifth and sixth artifact shot)
-                .afterDisp(10, robot.stopFire())
-                .afterDisp(5, robot.turret2())
-                .setTangent(Math.toRadians(270))
-                .splineToLinearHeading(new Pose2d(5, 36, Math.toRadians(90)), Math.toRadians(270))
-                .setTangent(Math.toRadians(270))
-                .splineToSplineHeading(new Pose2d(-20, 18, Math.toRadians(90)), Math.toRadians(225))
-                .stopAndAdd(robot.fire())
-                .waitSeconds(1)
-                .stopAndAdd(robot.stopFire())
-
-                // first gate pickup (thirteenth, fourteenth and fifteenth artifact pickup)
-                .afterDisp(0, robot.intake())
-                .setTangent(Math.toRadians(0))
-                .splineToSplineHeading(new Pose2d(0, 24, Math.toRadians(90)), Math.toRadians(90))
-                .setTangent(Math.toRadians(90))
-                .splineToLinearHeading(new Pose2d(6, 47, Math.toRadians(90)), Math.toRadians(90))
-                //.waitSeconds(.5)
-
-                .setTangent(Math.toRadians(90))
-                .splineToSplineHeading(new Pose2d(6, 56, Math.toRadians(120)), Math.toRadians(90), baseVelConstraint3)
-                .setTangent(Math.toRadians(90))
-                .splineToLinearHeading(new Pose2d(10, 59, Math.toRadians(120)), Math.toRadians(45))
-
-                .waitSeconds(.5)
-                //.stopAndAdd(robot.stopFire())
-
-                // drive to zone for first gate pickup shot (fourth, fifth and sixth artifact shot)
-                .afterDisp(10, robot.stopFire())
-                .afterDisp(5, robot.turret2())
-                .setTangent(Math.toRadians(270))
-                .splineToLinearHeading(new Pose2d(5, 36, Math.toRadians(90)), Math.toRadians(270))
-                .setTangent(Math.toRadians(270))
-                .splineToSplineHeading(new Pose2d(-20, 18, Math.toRadians(90)), Math.toRadians(225))
-                .stopAndAdd(robot.fire())
-                .waitSeconds(1)
-                .stopAndAdd(robot.stopFire())
+                    // drive to zone for first spike mark shot (fourth, fifth and sixth artifact shot)
+                    //.afterDisp(5, robot.stopFire())
+                    .afterDisp(5, robot.turret2())
+                    .setTangent(Math.toRadians(270))
+                    .splineToLinearHeading(new Pose2d(5, 36, Math.toRadians(90)), Math.toRadians(270))
+                    .setTangent(Math.toRadians(270))
+                    .splineToSplineHeading(new Pose2d(-20, 18, Math.toRadians(90)), Math.toRadians(225))
+                    .stopAndAdd(robot.fire())
+                    .waitSeconds(1)
+                    .stopAndAdd(robot.stopFire())
 
 
-              /*  // intake second spike mark (seventh, eighth and ninth artifact pickup)
-                .afterDisp(0, robot.intake())
-                .setTangent(Math.toRadians(90))
-                .splineToLinearHeading(new Pose2d(-12, 48, Math.toRadians(45)), Math.toRadians(30))
 
-                // back to zone after flush (seventh, eighth and ninth artifact shot)
-                .strafeTo(new Vector2d(-15, 18))
-                .waitSeconds(.5)
-                .stopAndAdd(robot.fire())
-                .waitSeconds(1)
-                .stopAndAdd(robot.stopFire())
 
-                // intake third spike mark (tenth, eleventh and twelfth artifact pickup)
-                .afterDisp(0, robot.intake())
-                .setTangent(Math.toRadians(45))
-                .splineToLinearHeading(new Pose2d(15, 49, Math.toRadians(0)), Math.toRadians(0))
-                .setTangent(Math.toRadians(0))
-                .splineToSplineHeading(new Pose2d(38, 49, Math.toRadians(0)), Math.toRadians(0)/*, baseVelConstraint2)
-                .stopAndAdd(robot.stopFire())
-*/
+                    // pickup
+                    .afterDisp(0, robot.intake())
+                    .setTangent(Math.toRadians(90))
+                    .splineToLinearHeading(new Pose2d(-18, 57, Math.toRadians(90)), Math.toRadians(90))
+
+                    // back to zone
+                    //.afterDisp(0, robot.stopFire())
+                    .afterDisp(5, robot.turret2())
+                    .setTangent(Math.toRadians(270))
+                    .splineToSplineHeading(new Pose2d(-20, 24, Math.toRadians(90)), Math.toRadians(270))
+                    .stopAndAdd(robot.fire())
+                    .waitSeconds(1)
+                    .stopAndAdd(robot.stopFire())
+
+
+
+                    // pickup
+                    .afterDisp(0, robot.intake())
+                    .setTangent(Math.toRadians(0))
+                    .splineToLinearHeading(new Pose2d(35, 40, Math.toRadians(90)), Math.toRadians(0))
+                    .setTangent(Math.toRadians(0))
+                    .splineToLinearHeading(new Pose2d(35, 55, Math.toRadians(90)), Math.toRadians(0))
+
+                    // back to zone
+                    .afterDisp(20, robot.stopFire())
+                    .afterDisp(5, robot.turret2())
+                    .setTangent(Math.toRadians(225))
+                    .splineToSplineHeading(new Pose2d(-20, 24, Math.toRadians(90)), Math.toRadians(225))
+                    .stopAndAdd(robot.fire())
+                    .waitSeconds(1)
+                    .stopAndAdd(robot.stopFire())
+
+
+
+
+                    .setTangent(Math.toRadians(180))
+                    .splineToLinearHeading(new Pose2d(-61.3784, 20, Math.toRadians(90)), Math.toRadians(180), adaptiveBrakeneoooom)
+
                 .build();
 
         waitForStart();
@@ -459,17 +409,23 @@ public class eighteenUnsorted extends LinearOpMode {
                             telemetryPacket.put("Y Pose", currentPose.position.y);
                             telemetryPacket.put("Heading", Math.toDegrees(currentPose.heading.toDouble()));
                             telemetryPacket.put("Distance from goal", hypot);
+                            telemetryPacket.put("ABC velocity offset", offset);
 
                             // 2. Push aligned data to Driver Station
                             telemetry.addData("X Pose", currentPose.position.x);
                             telemetry.addData("Y Pose", currentPose.position.y);
                             telemetry.addData("Heading", Math.toDegrees(currentPose.heading.toDouble()));
                             telemetry.addData("Distance from goal", hypot);
+                            telemetry.addData("vel offset", offset);
                             telemetry.update();
 
                             return true;
                         }
                 )
         ));
+        // Save Pose for TeleOp
+        if (drive.localizer.getPose() != null) {
+            org.firstinspires.ftc.teamcode.Subsystems.PoseStorage.currentPose = drive.localizer.getPose();
+        }
     }
 }

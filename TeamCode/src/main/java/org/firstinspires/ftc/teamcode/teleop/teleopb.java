@@ -26,6 +26,7 @@ package org.firstinspires.ftc.teamcode.teleop;
 import android.util.Size;
 
 import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.Pose2d;
 import com.pedropathing.util.Timer;
@@ -43,6 +44,8 @@ import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
+import org.firstinspires.ftc.robotcore.external.hardware.camera.controls.ExposureControl;
+import org.firstinspires.ftc.robotcore.external.hardware.camera.controls.GainControl;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
@@ -55,16 +58,12 @@ import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.opencv.ImageRegion;
 import org.firstinspires.ftc.vision.opencv.PredominantColorProcessor;
 
-import java.util.ArrayList;
 import java.util.List;
-import com.acmerobotics.dashboard.config.Config;
-import org.firstinspires.ftc.robotcore.external.hardware.camera.controls.ExposureControl;
-import org.firstinspires.ftc.robotcore.external.hardware.camera.controls.GainControl;
 import java.util.concurrent.TimeUnit;
 
 @Config
-@TeleOp(name = "TELEOP RED COWTOWN  (asuka yay)", group = "Teleop")
-public class teleop extends LinearOpMode {
+@TeleOp(name = "TELEOP BLUE COWTOWN  (asuka yay)", group = "Teleop")
+public class teleopb extends LinearOpMode {
     public static long webcamExposureMs = 15;
     public static int webcamGain = 250;
 
@@ -124,7 +123,7 @@ public class teleop extends LinearOpMode {
 
     // Target pos
     double tx = -72;
-    double ty = 72;
+    double ty = -72;
     double t = 1;
 
     VisionPortal myVisionPortal;
@@ -266,12 +265,10 @@ public class teleop extends LinearOpMode {
                 telemetry.update();
             }
         }
-
         h.frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         h.frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         h.backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         h.backRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
         timer.reset();
         Pose2d savedPose = PoseStorage.currentPose;
         if (savedPose.position.x == 0 && savedPose.position.y == 0 && savedPose.heading.toDouble() == 0) {
@@ -619,7 +616,7 @@ public class teleop extends LinearOpMode {
             vx = h.pip.getVelX(DistanceUnit.INCH);
 
             tx = -72 - (vx * t);
-            ty = 72 - (vy * t);
+            ty = -72 - (vy * t);
 
             h.pip.update();
 
@@ -680,7 +677,7 @@ public class teleop extends LinearOpMode {
             }
 
             if (gamepad1.dpad_up) {
-                h.pip.setPosition(new Pose2D(DistanceUnit.INCH, -61.3784, 37.8365, AngleUnit.DEGREES, 90));
+                h.pip.setPosition(new Pose2D(DistanceUnit.INCH, -59.54706627552903, -37.79224545936885, AngleUnit.DEGREES, -88.13463592529297));
                 samOffset = 0;
                 fly.samOffsetV = 400;
             } else if (gamepad1.dpad_down) {
@@ -782,7 +779,7 @@ public class teleop extends LinearOpMode {
                 gamepad2.runLedEffect(motif112Effect);
             }
 
-            /*if (gamepad1.touchpad) {
+            /* if (gamepad1.touchpad) {
                 lift = 1;
             } else {
                 lift = 0;
@@ -791,7 +788,7 @@ public class teleop extends LinearOpMode {
             if (lift == 1) {
                 if (distanceIn < 15){
                     h.frontLeft.setPower(1);
-                    h. backLeft.setPower(1);
+                    h.backLeft.setPower(1);
                     h.frontRight.setPower(-1);
                     h.backRight.setPower( -1);
                 }
@@ -805,7 +802,7 @@ public class teleop extends LinearOpMode {
                     currentPtoDeploymentState = PtoDeploymentState.DEPLOYING_R_SERVO;
                 }
 
-            }*/
+            } */
 
             Pose2d pose = new Pose2d(h.pip.getPosX(DistanceUnit.INCH), h.pip.getPosY(DistanceUnit.INCH), Math.toRadians(h.pip.getHeading(AngleUnit.DEGREES)));
             TelemetryPacket packet = new TelemetryPacket();
