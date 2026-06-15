@@ -135,13 +135,15 @@ public class twelveUnsorted extends LinearOpMode {
                     fly.voltage = currentVoltage;
                     fly.loop();        // Calculate power
 
-                    if (hypot < 75) {
+                   /* if (hypot < 75) {
                         hpos = -0.005 * hypot + 0.96;
                     } else if(hypot > 75 && hypot < 100){
                         hpos = -0.014 * hypot + 1.608;
                     } else if(hypot > 100){
                         hpos = 0;
-                    }
+                    }*/
+
+                    hpos = -0.002 * ((flywheel2.getVelocity() * 60) / 37.333) + 4.1;
 
                     // Clip base hood pos
                     hpos = Range.clip(hpos, 0, .7);
@@ -183,10 +185,18 @@ public class twelveUnsorted extends LinearOpMode {
         }
         public Action lowerVelocity() { return new lowerVelocity(); }
 
+        private class lowerVelocity2 implements Action {
+            @Override public boolean run(@NonNull TelemetryPacket p) {
+                offset = -30;
+                return false;
+            }
+        }
+        public Action lowerVelocity2() { return new lowerVelocity2(); }
+
         private class turret1 implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                turret1.setPosition(.27);
-                turret2.setPosition(.27);
+                turret1.setPosition(.26);
+                turret2.setPosition(.26);
                 return false;
             }
         }
@@ -194,8 +204,8 @@ public class twelveUnsorted extends LinearOpMode {
 
         private class turret2 implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                turret1.setPosition(.14);
-                turret2.setPosition(.14);
+                turret1.setPosition(.13);
+                turret2.setPosition(.13);
                 return false;
             }
         }
@@ -223,6 +233,8 @@ public class twelveUnsorted extends LinearOpMode {
     @Override
     public void runOpMode() throws InterruptedException {
 
+        flywheel1 = hardwareMap.get(DcMotorEx.class, "flywheel1");
+        flywheel2 = hardwareMap.get(DcMotorEx.class, "flywheel2");
         intake = hardwareMap.get(DcMotorEx.class, "intake");
         swingarm = hardwareMap.get(Servo.class, "swingArm");
         sickle = hardwareMap.get(Servo.class, "sickle");
@@ -314,11 +326,14 @@ public class twelveUnsorted extends LinearOpMode {
                     // first volley driving away from zone (first, second and third artifact shot)
                     .waitSeconds(1)
                     .afterDisp(0, robot.turret1())
-                    .afterDisp(0, robot.raiseVelocity())
+                    .afterDisp(0, robot.lowerVelocity2())
 
-                    .afterDisp(10, robot.fire())
+
                     .setTangent(Math.toRadians(315))
                     .splineToSplineHeading(new Pose2d(-25, 25, Math.toRadians(37)), Math.toRadians(315))
+                    .stopAndAdd(robot.fire())
+                    .waitSeconds(1)
+                    .stopAndAdd(robot.stopFire())
 
                     // intake first spike (fourth, fifth and sixth artifact pickup)
                     .afterDisp(0, robot.lowerVelocity())
@@ -369,9 +384,9 @@ public class twelveUnsorted extends LinearOpMode {
                     // pickup
                     .afterDisp(0, robot.intake())
                     .setTangent(Math.toRadians(0))
-                    .splineToLinearHeading(new Pose2d(35, 40, Math.toRadians(90)), Math.toRadians(0))
+                    .splineToLinearHeading(new Pose2d(31, 40, Math.toRadians(90)), Math.toRadians(0))
                     .setTangent(Math.toRadians(0))
-                    .splineToLinearHeading(new Pose2d(35, 55, Math.toRadians(90)), Math.toRadians(0))
+                    .splineToLinearHeading(new Pose2d(31, 55, Math.toRadians(90)), Math.toRadians(0))
 
                     // back to zone
                     .afterDisp(20, robot.stopFire())

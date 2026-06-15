@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.roadrunner.autos.far;
 
 import androidx.annotation.NonNull;
 
+import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.Action;
 import com.acmerobotics.roadrunner.ParallelAction;
@@ -36,6 +37,7 @@ public class farRedflushAndSpike extends LinearOpMode {
     double tx = -72; // Target X
     double ty = 72;  // Target Y
     double t = 0;
+    private FtcDashboard dashboard;
 
     double robotX;
     double robotY;
@@ -317,13 +319,16 @@ public class farRedflushAndSpike extends LinearOpMode {
 
         // We can keep this mapping just in case, but RoadRunner owns the hardware math now!
         pip = hardwareMap.get(GoBildaPinpointDriver.class,"pinpoint");
+        flywheel1 = hardwareMap.get(DcMotorEx.class, "flywheel1");
+        flywheel2 = hardwareMap.get(DcMotorEx.class, "flywheel2");
+
 
         Robot robot = new Robot(drive);
 
         Action TEST = drive.actionBuilder(initialPose)
 
                 .waitSeconds(1)
-                .stopAndAdd(robot.lowerVelocity())
+                //.stopAndAdd(robot.lowerVelocity())
                 .stopAndAdd( robot.turret1f())
                 .waitSeconds(.1)
                 .stopAndAdd(robot.fire())
@@ -446,7 +451,7 @@ public class farRedflushAndSpike extends LinearOpMode {
 
 
                 .build();
-
+        dashboard = FtcDashboard.getInstance();
         waitForStart();
         if (isStopRequested()) return;
 
@@ -467,6 +472,9 @@ public class farRedflushAndSpike extends LinearOpMode {
                             telemetryPacket.put("Heading", Math.toDegrees(currentPose.heading.toDouble()));
                             telemetryPacket.put("Distance from goal", hypot);
                             telemetryPacket.put("ABC velocity offset", offset);
+                            dashboard.getTelemetry().addData("Target RPM", fly.target);
+                            dashboard.getTelemetry().addData("Actual RPM", (flywheel1.getVelocity() * 60) / 37.333);
+                            dashboard.getTelemetry().update();
 
                             // 2. Push aligned data to Driver Station
                             telemetry.addData("X Pose", currentPose.position.x);

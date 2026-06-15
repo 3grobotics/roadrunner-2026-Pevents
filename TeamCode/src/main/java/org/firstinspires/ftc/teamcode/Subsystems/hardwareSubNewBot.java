@@ -18,7 +18,7 @@ public class hardwareSubNewBot {
     public final Servo hood, swingArm, gate, sickle, ptoR, ptoL, nautR, nautL;
     public final ServoImplEx turret1, turret2;
     public final DigitalChannel topDistSensor, midDistSensor, frontDistSensor;
-    public final DistanceSensor revDist;
+   // public final DistanceSensor revDist;
 
     public final GoBildaPinpointDriver pip;
 
@@ -45,7 +45,7 @@ public class hardwareSubNewBot {
         sickle = hardwareMap.get(Servo.class, "sickle");
         gate = hardwareMap.get(Servo.class, "gate");
         indexer = hardwareMap.get(DcMotorEx.class, "indexer");
-        revDist = hardwareMap.get(DistanceSensor.class, "revDist");
+        //revDist = hardwareMap.get(DistanceSensor.class, "revDist");
         nautR = hardwareMap.get(Servo.class, "nautR");
         nautL = hardwareMap.get(Servo.class, "nautL");
 

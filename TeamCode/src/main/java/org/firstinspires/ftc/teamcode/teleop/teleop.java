@@ -19,8 +19,6 @@
 *
 * */
 
-
-
 package org.firstinspires.ftc.teamcode.teleop;
 
 import android.util.Size;
@@ -40,6 +38,11 @@ import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
+
+// --- NEW AMP READING IMPORTS ---
+import com.qualcomm.hardware.lynx.LynxModule;
+import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
+// -------------------------------
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
@@ -134,11 +137,17 @@ public class teleop extends LinearOpMode {
     // Inside your OpMode class definition
     private VoltageSensor controlHubVoltageSensor;
 
+    // --- NEW HUB LIST VARIABLE ---
+    private List<LynxModule> allHubs;
+
     double currentVoltage;
     double intakeCmd = 0;
     @Override
     public void runOpMode() {
         controlHubVoltageSensor = hardwareMap.get(VoltageSensor.class, "Control Hub");
+
+        // --- MAP THE HUBS HERE ---
+        allHubs = hardwareMap.getAll(LynxModule.class);
 
         // Initialize Limelight
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
@@ -311,7 +320,7 @@ public class teleop extends LinearOpMode {
             // Poll inputs
             currentDpadLeft         = gamepad1.dpad_left;
             currentPs               = gamepad1.ps;
-            currentRightBumper      = gamepad1.right_bumper;
+            currentRightBumper      = gamepad2.right_bumper;
             currentRightStickButton = gamepad1.right_stick_button;
             currentLeftStickButton  = gamepad1.left_stick_button;
 
@@ -336,7 +345,7 @@ public class teleop extends LinearOpMode {
 
             // --- GLOBAL OVERRIDE: GAMEPAD 1 ALWAYS WINS ---
             // Force Firing
-            if (gamepad1.right_bumper) {
+            if (gamepad2.right_bumper) {
                 currentIntakeState = IntakeState.FIRING;
             }
             // Force Manual Intake
@@ -521,7 +530,7 @@ public class teleop extends LinearOpMode {
                     h.intake.setPower(-1);
                     h.swingArm.setPosition(.95);
                     // This is the only way to exit firing
-                    if (!gamepad1.right_bumper) {
+                    if (!gamepad2.right_bumper) {
                         currentIntakeState = IntakeState.FIRING_COMPLETE;
                         intakeStateTimer.reset();
                     }
@@ -818,6 +827,19 @@ public class teleop extends LinearOpMode {
             double velError1f = ((h.flywheel2.getVelocity() * 60) / 37.333) - fly.target2;
             double velError2f = ((h.flywheel1.getVelocity() * 60) / 37.333) - fly.target;
 
+
+            // --- NEW AMP READING TELEMETRY LOGIC ---
+            for (LynxModule hub : allHubs) {
+                double hubAmps = hub.getCurrent(CurrentUnit.AMPS);
+                if (hub.isParent()) {
+                    packet.put("Control Hub Amps", hubAmps);
+                    telemetry.addData("Control Hub Amps", "%.2f A", hubAmps);
+                } else {
+                    packet.put("Expansion Hub Amps", hubAmps);
+                    telemetry.addData("Expansion Hub Amps", "%.2f A", hubAmps);
+                }
+            }
+            // ---------------------------------------
 
 
             telemetry.addData("Control Hub Voltage", "%.2f Volts", currentVoltage);

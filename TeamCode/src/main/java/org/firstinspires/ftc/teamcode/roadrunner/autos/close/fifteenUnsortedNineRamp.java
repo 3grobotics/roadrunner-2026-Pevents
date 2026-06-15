@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.roadrunner.autos.far;
+package org.firstinspires.ftc.teamcode.roadrunner.autos.close;
 
 import androidx.annotation.NonNull;
 
@@ -19,18 +19,12 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.util.Range;
 
-// --- NEW IMPORTS FOR AMP READING ---
-import com.qualcomm.hardware.lynx.LynxModule;
-import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
-import java.util.List;
-// -----------------------------------
-
 import org.firstinspires.ftc.teamcode.Subsystems.flywheelSub;
 import org.firstinspires.ftc.teamcode.drivers.GoBildaPinpointDriver;
 import org.firstinspires.ftc.teamcode.roadrunner.MecanumDrive;
 
-@Autonomous(name = "far blue 15 flush + spike w/ leave", group = "far")
-public class farBlueflushandspike extends LinearOpMode {
+@Autonomous(name = "red 12 unsorted 3 spike 1 flush", group = "competition")
+public class fifteenUnsortedNineRamp extends LinearOpMode {
 
     /* ──────────────── hardware ──────────────── */
     private DcMotor intake;
@@ -40,7 +34,7 @@ public class farBlueflushandspike extends LinearOpMode {
 
     double hpos;
     double tx = -72; // Target X
-    double ty = -72;  // Target Y
+    double ty = 72;  // Target Y
     double t = 0;
 
     double robotX;
@@ -51,13 +45,10 @@ public class farBlueflushandspike extends LinearOpMode {
 
     double vx;
     double vy;
-    double offset = 0;
+    double offset = 10;
     public flywheelSub fly;
     private VoltageSensor controlHubVoltageSensor;
     double currentVoltage;
-
-    // --- NEW VARIABLE FOR HUBS ---
-    private List<LynxModule> allHubs;
 
 
     public class Robot {
@@ -92,26 +83,14 @@ public class farBlueflushandspike extends LinearOpMode {
 
         private class fire implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                sickle.setPosition(.85);
                 gate.setPosition(.97);
-                indexer.setPower(-.7);
-                intake.setPower( -.7);
+                indexer.setPower(-1);
+                intake.setPower(-1);
                 swingarm.setPosition(.95);
                 return false;
             }
         }
         public Action fire() { return new fire(); }
-
-        private class firehard implements Action {
-            @Override public boolean run(@NonNull TelemetryPacket p) {
-                gate.setPosition(.97);
-                indexer.setPower(-1);
-                intake.setPower( -1);
-                swingarm.setPosition(.95);
-                return false;
-            }
-        }
-        public Action firehard() { return new firehard(); }
 
         private class stopFire implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
@@ -132,8 +111,8 @@ public class farBlueflushandspike extends LinearOpMode {
                     vx = currentVel.linearVel.x;
                     vy = currentVel.linearVel.y;
 
-                    tx =    -72 - (vx * t);
-                    ty =  -72 - (vy * t);
+                    tx = -72 - (vx * t);
+                    ty =  72 - (vy * t);
 
                     // 2. Use RoadRunner's offset-adjusted field coordinates
                     robotX = driver.localizer.getPose().position.x;
@@ -151,19 +130,20 @@ public class farBlueflushandspike extends LinearOpMode {
                         t                      = -0.004 * hypot + 1.317;
                     }
                     currentVoltage = controlHubVoltageSensor.getVoltage();
-
                     fly.runFlywheel();
-                    fly.hypot =   offset + hypot; // Pass fresh data first
+                    fly.hypot = hypot + offset; // Pass fresh data first
                     fly.voltage = currentVoltage;
                     fly.loop();        // Calculate power
 
-                    if (hypot < 75) {
+                   /* if (hypot < 75) {
                         hpos = -0.005 * hypot + 0.96;
                     } else if(hypot > 75 && hypot < 100){
                         hpos = -0.014 * hypot + 1.608;
                     } else if(hypot > 100){
                         hpos = 0;
-                    }
+                    }*/
+
+                    hpos = -0.002 * ((flywheel2.getVelocity() * 60) / 37.333) + 4.1;
 
                     // Clip base hood pos
                     hpos = Range.clip(hpos, 0, .7);
@@ -199,16 +179,24 @@ public class farBlueflushandspike extends LinearOpMode {
 
         private class lowerVelocity implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                offset = -15;
+                offset = 0;
                 return false;
             }
         }
         public Action lowerVelocity() { return new lowerVelocity(); }
 
+        private class lowerVelocity2 implements Action {
+            @Override public boolean run(@NonNull TelemetryPacket p) {
+                offset = -30;
+                return false;
+            }
+        }
+        public Action lowerVelocity2() { return new lowerVelocity2(); }
+
         private class turret1 implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                turret1.setPosition(.79);// was .8
-                turret2.setPosition(.79);// was .8
+                turret1.setPosition(.26);
+                turret2.setPosition(.26);
                 return false;
             }
         }
@@ -216,8 +204,8 @@ public class farBlueflushandspike extends LinearOpMode {
 
         private class turret2 implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                turret1.setPosition(.78);// was .79
-                turret2.setPosition(.78);// was .79
+                turret1.setPosition(.13);
+                turret2.setPosition(.13);
                 return false;
             }
         }
@@ -225,8 +213,8 @@ public class farBlueflushandspike extends LinearOpMode {
 
         private class turret3 implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                turret1.setPosition(.6);
-                turret2.setPosition(.6);
+                turret1.setPosition(.33);
+                turret2.setPosition(.33);
                 return false;
             }
         }
@@ -245,6 +233,8 @@ public class farBlueflushandspike extends LinearOpMode {
     @Override
     public void runOpMode() throws InterruptedException {
 
+        flywheel1 = hardwareMap.get(DcMotorEx.class, "flywheel1");
+        flywheel2 = hardwareMap.get(DcMotorEx.class, "flywheel2");
         intake = hardwareMap.get(DcMotorEx.class, "intake");
         swingarm = hardwareMap.get(Servo.class, "swingArm");
         sickle = hardwareMap.get(Servo.class, "sickle");
@@ -259,9 +249,6 @@ public class farBlueflushandspike extends LinearOpMode {
         indexer.setDirection(DcMotorEx.Direction.REVERSE);
         intake.setDirection(DcMotorEx.Direction.REVERSE);
         controlHubVoltageSensor = hardwareMap.get(VoltageSensor.class, "Control Hub");
-
-        // --- MAP THE HUBS HERE ---
-        allHubs = hardwareMap.getAll(LynxModule.class);
 
         fly = new flywheelSub(hardwareMap);
 
@@ -279,7 +266,14 @@ public class farBlueflushandspike extends LinearOpMode {
 
         /* ---- Adaptive Braking Constraint ---- */
         VelConstraint adaptiveBrake = (robotPose, path, pathPos) -> {
-            return 10000;
+            double distLeft = path.length() - pathPos;
+            double cruiseVel = 90;
+            double slowVel = 45;
+            double brakeZone = 20.0;
+
+            if (distLeft < brakeZone) {
+                return slowVel + (cruiseVel - slowVel) * (distLeft / brakeZone);
+            } else return cruiseVel;
         };
 
         VelConstraint adaptiveBrakeSlow = (robotPose, path, pathPos) -> {
@@ -311,11 +305,12 @@ public class farBlueflushandspike extends LinearOpMode {
             }
         };
 
-        /* ---- Poses & Actions ---- */
-        Pose2d initialPose = new Pose2d(60, -16.5, Math.toRadians(-90));
-        Pose2d intakePose = new Pose2d(60, -60, Math.toRadians(-90));
-        Pose2d shotPose = new Pose2d(60, -24, Math.toRadians(-90));
+        VelConstraint adaptiveBrakeneoooom = (robotPose, path, pathPos) -> {
+            return 10000;
+        };
 
+        /* ---- Poses & Actions ---- */
+        Pose2d initialPose = new Pose2d(-53, 53, Math.toRadians(37.5));
 
         // MecanumDrive takes control of the Pinpoint here and sets the -53, 53 offset internally
         MecanumDrive drive = new MecanumDrive(hardwareMap, initialPose);
@@ -325,114 +320,88 @@ public class farBlueflushandspike extends LinearOpMode {
 
         Robot robot = new Robot(drive);
 
+        // Pathing Definitions
         Action TEST = drive.actionBuilder(initialPose)
 
-                .waitSeconds(1)
-                //.stopAndAdd(robot.lowerVelocity())
-                .stopAndAdd( robot.turret1())
-                .waitSeconds(.1)
-                .stopAndAdd(robot.fire())
-                .waitSeconds(1.5)
-                .stopAndAdd(robot.firehard())
-                .waitSeconds(.5)
-                .stopAndAdd(robot.stopFire())
+                    // first volley driving away from zone (first, second and third artifact shot)
+                    .waitSeconds(1)
+                    .afterDisp(0, robot.turret1())
+                    .afterDisp(0, robot.lowerVelocity2())
 
 
-                // pickup
-                .afterDisp(0, robot.intake())
-                .setTangent(Math.toRadians(180))
-                .splineToLinearHeading( new Pose2d(30, -40, Math.toRadians(-90)), Math.toRadians(180),adaptiveBrake)
+                    .setTangent(Math.toRadians(315))
+                    .splineToSplineHeading(new Pose2d(-25, 25, Math.toRadians(37)), Math.toRadians(315))
+                    .stopAndAdd(robot.fire())
+                    .waitSeconds(1)
+                    .stopAndAdd(robot.stopFire())
 
-                .setTangent(Math.toRadians(270))
-                .splineToSplineHeading(new Pose2d(30, -60, Math.toRadians(-90)), Math.toRadians(270), adaptiveBrake)
+                    // intake first spike (fourth, fifth and sixth artifact pickup)
+                    .afterDisp(0, robot.lowerVelocity())
+                    .afterDisp(0, robot.intake())
+                    .setTangent(Math.toRadians(0))
+                    .splineToSplineHeading(new Pose2d(9, 30, Math.toRadians(90)), Math.toRadians(90))
+                    //.waitSeconds(.5)
+                    .setTangent(Math.toRadians(90))
+                    .splineToLinearHeading(new Pose2d(9, 45, Math.toRadians(90)), Math.toRadians(90), slow_as_hell)
 
-                .afterDisp(20, robot.stopFire())
-                .setTangent(Math.toRadians(45))
-                .splineToSplineHeading(shotPose, Math.toRadians(45),adaptiveBrake)
-                //.waitSeconds(1)
-                .stopAndAdd( robot.turret2())
-                .waitSeconds(.1)
-                .stopAndAdd(robot.fire())
-                .waitSeconds(1.5)
-                .stopAndAdd(robot.firehard())
-                .waitSeconds(.5)
-                .stopAndAdd(robot.stopFire())
-
-
-                // pickup
-                .afterDisp(0, robot.intake())
-                .setTangent(Math.toRadians(-90))
-                .splineToLinearHeading(intakePose, Math.toRadians(-90), adaptiveBrake)
-                //.waitSeconds(.5)
+                    // flush
+                    .setTangent(Math.toRadians(180))
+                    .splineToSplineHeading(new Pose2d(5, 45, Math.toRadians(90)), Math.toRadians(180), slow_as_hell)
+                    .setTangent(Math.toRadians(180))
+                    .splineToLinearHeading(new Pose2d(5, 55, Math.toRadians(90)), Math.toRadians(90), slow_as_hell)
 
 
-                // drive back
-                .afterDisp(20, robot.stopFire())
-                .setTangent(Math.toRadians(-270))
-                .splineToSplineHeading(shotPose, Math.toRadians(90),adaptiveBrake)
-                //.waitSeconds(1)
-                .stopAndAdd( robot.turret2())
-                .waitSeconds(.1)
-                .stopAndAdd(robot.fire())
-                .waitSeconds(1.5)
-                .stopAndAdd(robot.firehard())
-                .waitSeconds(.5)
-                .stopAndAdd(robot.stopFire())
-
-
-                // pickup
-                .afterDisp(0, robot.intake())
-                .setTangent(Math.toRadians(-90))
-                .splineToLinearHeading(intakePose, Math.toRadians(-90),adaptiveBrake)
-                //.waitSeconds(.5)
-                /* VV this picks up from a flush better VV
-                .afterDisp(0, robot.intake())
-                .setTangent(Math.toRadians(100))
-                .splineToLinearHeading(new Pose2d(60, 60, Math.toRadians(120)), Math.toRadians(90))
-                .waitSeconds(.5)*/
-
-                /* VV this keeps artifacts in place better VV
-                .setTangent(Math.toRadians(100))
-                .splineToLinearHeading(new Pose2d(60, 60, Math.toRadians(45)), Math.toRadians(45)) */
-
-                // drive back
-                .afterDisp(20, robot.stopFire())
-                .setTangent(Math.toRadians(-270))
-                .splineToSplineHeading(shotPose, Math.toRadians(90),adaptiveBrake)
-                //.waitSeconds(1)
-                .stopAndAdd( robot.turret2())
-                .waitSeconds(.1)
-                .stopAndAdd(robot.fire())
-                .waitSeconds(1.5)
-                .stopAndAdd(robot.firehard())
-                .waitSeconds(.5)
-                .stopAndAdd(robot.stopFire())
-
-                // pickup
-                .afterDisp(0, robot.intake())
-                .setTangent(Math.toRadians(-90))
-                .splineToLinearHeading(intakePose, Math.toRadians(-90),adaptiveBrake)
-                //.waitSeconds(.5)
-
-
-                // drive back
-                .afterDisp(20, robot.stopFire())
-                .setTangent(Math.toRadians(-270))
-                .splineToSplineHeading(shotPose, Math.toRadians(90),adaptiveBrake)
-                //.waitSeconds(1)
-                .stopAndAdd( robot.turret2())
-                .waitSeconds(.1)
-                .stopAndAdd(robot.fire())
-                .waitSeconds(1.5)
-                .stopAndAdd(robot.firehard())
-                .waitSeconds(.5)
-                .stopAndAdd(robot.stopFire())
-
-                .setTangent(Math.toRadians(270))
-                .splineToSplineHeading(new Pose2d(60, -50, Math.toRadians(-90)), Math.toRadians(270),adaptiveBrake)
+                    // drive to zone for first spike mark shot (fourth, fifth and sixth artifact shot)
+                    //.afterDisp(5, robot.stopFire())
+                    .afterDisp(5, robot.turret2())
+                    .setTangent(Math.toRadians(270))
+                    .splineToLinearHeading(new Pose2d(5, 36, Math.toRadians(90)), Math.toRadians(270))
+                    .setTangent(Math.toRadians(270))
+                    .splineToSplineHeading(new Pose2d(-20, 18, Math.toRadians(90)), Math.toRadians(225))
+                    .stopAndAdd(robot.fire())
+                    .waitSeconds(1)
+                    .stopAndAdd(robot.stopFire())
 
 
 
+
+                    // pickup
+                    .afterDisp(0, robot.intake())
+                    .setTangent(Math.toRadians(90))
+                    .splineToLinearHeading(new Pose2d(-18, 57, Math.toRadians(90)), Math.toRadians(90))
+
+                    // back to zone
+                    //.afterDisp(0, robot.stopFire())
+                    .afterDisp(5, robot.turret2())
+                    .setTangent(Math.toRadians(270))
+                    .splineToSplineHeading(new Pose2d(-20, 24, Math.toRadians(90)), Math.toRadians(270))
+                    .stopAndAdd(robot.fire())
+                    .waitSeconds(1)
+                    .stopAndAdd(robot.stopFire())
+
+
+
+                    // pickup
+                    .afterDisp(0, robot.intake())
+                    .setTangent(Math.toRadians(0))
+                    .splineToLinearHeading(new Pose2d(31, 40, Math.toRadians(90)), Math.toRadians(0))
+                    .setTangent(Math.toRadians(0))
+                    .splineToLinearHeading(new Pose2d(31, 55, Math.toRadians(90)), Math.toRadians(0))
+
+                    // back to zone
+                    .afterDisp(20, robot.stopFire())
+                    .afterDisp(5, robot.turret2())
+                    .setTangent(Math.toRadians(225))
+                    .splineToSplineHeading(new Pose2d(-20, 24, Math.toRadians(90)), Math.toRadians(225))
+                    .stopAndAdd(robot.fire())
+                    .waitSeconds(1)
+                    .stopAndAdd(robot.stopFire())
+
+
+
+
+                    .setTangent(Math.toRadians(180))
+                    .splineToLinearHeading(new Pose2d(-61.3784, 20, Math.toRadians(90)), Math.toRadians(180), adaptiveBrakeneoooom)
 
                 .build();
 
@@ -456,19 +425,6 @@ public class farBlueflushandspike extends LinearOpMode {
                             telemetryPacket.put("Heading", Math.toDegrees(currentPose.heading.toDouble()));
                             telemetryPacket.put("Distance from goal", hypot);
                             telemetryPacket.put("ABC velocity offset", offset);
-
-                            // --- NEW HUB AMP READING LOGIC ---
-                            for (LynxModule hub : allHubs) {
-                                double hubAmps = hub.getCurrent(CurrentUnit.AMPS);
-                                if (hub.isParent()) {
-                                    telemetryPacket.put("Control Hub Amps", hubAmps);
-                                    telemetry.addData("Control Hub Amps", hubAmps);
-                                } else {
-                                    telemetryPacket.put("Expansion Hub Amps", hubAmps);
-                                    telemetry.addData("Expansion Hub Amps", hubAmps);
-                                }
-                            }
-                            // ---------------------------------
 
                             // 2. Push aligned data to Driver Station
                             telemetry.addData("X Pose", currentPose.position.x);
