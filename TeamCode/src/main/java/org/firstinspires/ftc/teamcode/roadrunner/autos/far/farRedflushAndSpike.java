@@ -198,8 +198,8 @@ public class farRedflushAndSpike extends LinearOpMode {
 
         private class turret1 implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                turret1.setPosition(.20);
-                turret2.setPosition(.20);
+                turret1.setPosition(.21);
+                turret2.setPosition(.21);
                 return false;
             }
         }
@@ -207,8 +207,8 @@ public class farRedflushAndSpike extends LinearOpMode {
 
         private class turret1f implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                turret1.setPosition(.20);// was .21
-                turret2.setPosition(.20);// was .21
+                turret1.setPosition(.21);// was .21
+                turret2.setPosition(.21);// was .21
                 return false;
             }
         }
@@ -216,8 +216,8 @@ public class farRedflushAndSpike extends LinearOpMode {
 
         private class turret2 implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                turret1.setPosition(.20);// was .21
-                turret2.setPosition(.20);// was .21
+                turret1.setPosition(.21);// was .21
+                turret2.setPosition(.21);// was .21
                 return false;
             }
         }
@@ -310,7 +310,7 @@ public class farRedflushAndSpike extends LinearOpMode {
 
         /* ---- Poses & Actions ---- */
         Pose2d initialPose = new Pose2d(60, 16.5, Math.toRadians(90));
-        Pose2d intakePose = new Pose2d(60, 60, Math.toRadians(90));
+        Pose2d intakePose = new Pose2d(60, 61, Math.toRadians(90));
         Pose2d shotPose = new Pose2d(60, 24, Math.toRadians(90));
 
 

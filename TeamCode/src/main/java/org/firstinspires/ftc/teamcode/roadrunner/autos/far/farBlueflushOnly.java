@@ -188,7 +188,7 @@ public class farBlueflushOnly extends LinearOpMode {
 
         private class lowerVelocity implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                offset = -15;
+                offset = -10;
                 return false;
             }
         }
@@ -196,8 +196,8 @@ public class farBlueflushOnly extends LinearOpMode {
 
         private class turret1 implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                turret1.setPosition(.8);
-                turret2.setPosition(.8);
+                turret1.setPosition(.8);// was .8
+                turret2.setPosition(.8);// was .8
                 return false;
             }
         }
@@ -205,8 +205,8 @@ public class farBlueflushOnly extends LinearOpMode {
 
         private class turret2 implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                turret1.setPosition(.79);
-                turret2.setPosition(.79);
+                turret1.setPosition(.79);// was .79
+                turret2.setPosition(.79);// was .79
                 return false;
             }
         }
@@ -316,11 +316,11 @@ public class farBlueflushOnly extends LinearOpMode {
                 .waitSeconds(1)
                 .stopAndAdd(robot.lowerVelocity())
                 .stopAndAdd( robot.turret1())
-                .waitSeconds(.1)
+                //.waitSeconds(.1)
                 .stopAndAdd(robot.fire())
                 .waitSeconds(1.5)
                 .stopAndAdd(robot.firehard())
-                .waitSeconds(.5)
+                //.waitSeconds(.5)
                 .stopAndAdd(robot.stopFire())
 
                 .setTangent(Math.toRadians(-100))
@@ -339,11 +339,11 @@ public class farBlueflushOnly extends LinearOpMode {
                 .splineToSplineHeading(shotPose, Math.toRadians(90),adaptiveBrake)
                 //.waitSeconds(1)
                 .stopAndAdd( robot.turret2())
-                .waitSeconds(.1)
+                //.waitSeconds(.1)
                 .stopAndAdd(robot.fire())
                 .waitSeconds(1.5)
                 .stopAndAdd(robot.firehard())
-                .waitSeconds(.5)
+                //.waitSeconds(.5)
                 .stopAndAdd(robot.stopFire())
 
 
@@ -368,11 +368,11 @@ public class farBlueflushOnly extends LinearOpMode {
                 .splineToSplineHeading(shotPose, Math.toRadians(90),adaptiveBrake)
                 //.waitSeconds(1)
                 .stopAndAdd( robot.turret2())
-                .waitSeconds(.1)
+                //.waitSeconds(.1)
                 .stopAndAdd(robot.fire())
                 .waitSeconds(1.5)
                 .stopAndAdd(robot.firehard())
-                .waitSeconds(.5)
+                //.waitSeconds(.5)
                 .stopAndAdd(robot.stopFire())
 
                 // pickup
@@ -388,11 +388,11 @@ public class farBlueflushOnly extends LinearOpMode {
                 .splineToSplineHeading(shotPose, Math.toRadians(90),adaptiveBrake)
                 //.waitSeconds(1)
                 .stopAndAdd( robot.turret2())
-                .waitSeconds(.1)
+                //.waitSeconds(.1)
                 .stopAndAdd(robot.fire())
                 .waitSeconds(1.5)
                 .stopAndAdd(robot.firehard())
-                .waitSeconds(.5)
+                //.waitSeconds(.5)
                 .stopAndAdd(robot.stopFire())
 
                 // pickup
@@ -408,11 +408,11 @@ public class farBlueflushOnly extends LinearOpMode {
                 .splineToSplineHeading(shotPose, Math.toRadians(90),adaptiveBrake)
                 //.waitSeconds(1)
                 .stopAndAdd( robot.turret2())
-                .waitSeconds(.1)
+                //.waitSeconds(.1)
                 .stopAndAdd(robot.fire())
                 .waitSeconds(1.5)
                 .stopAndAdd(robot.firehard())
-                .waitSeconds(.5)
+                //.waitSeconds(.5)
                 .stopAndAdd(robot.stopFire())
 
                 // pickup
@@ -428,7 +428,7 @@ public class farBlueflushOnly extends LinearOpMode {
                 .splineToSplineHeading(shotPose, Math.toRadians(90),adaptiveBrake)
                 //.waitSeconds(1)
                 .stopAndAdd( robot.turret2())
-                .waitSeconds(.1)
+                //.waitSeconds(.1)
                 .stopAndAdd(robot.fire())
                 .waitSeconds(1.5)
                 .stopAndAdd(robot.firehard())

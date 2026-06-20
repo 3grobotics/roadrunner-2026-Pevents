@@ -11,6 +11,7 @@ import com.acmerobotics.roadrunner.SequentialAction;
 import com.acmerobotics.roadrunner.VelConstraint;
 import com.acmerobotics.roadrunner.ftc.Actions;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
@@ -22,7 +23,7 @@ import com.qualcomm.robotcore.util.Range;
 import org.firstinspires.ftc.teamcode.Subsystems.flywheelSub;
 import org.firstinspires.ftc.teamcode.drivers.GoBildaPinpointDriver;
 import org.firstinspires.ftc.teamcode.roadrunner.MecanumDrive2;
-
+@Disabled
 @Autonomous(name = "far Red 18 only flushes without leave", group = "far")
 public class farRedflushOnly extends LinearOpMode {
 
@@ -188,7 +189,7 @@ public class farRedflushOnly extends LinearOpMode {
 
         private class lowerVelocity implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                offset = -15;
+                offset = 0;
                 return false;
             }
         }

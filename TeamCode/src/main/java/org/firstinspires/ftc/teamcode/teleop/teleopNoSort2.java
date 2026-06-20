@@ -21,31 +21,19 @@
 
 package org.firstinspires.ftc.teamcode.teleop;
 
-import android.util.Size;
-
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.Pose2d;
-import com.pedropathing.util.Timer;
-import com.qualcomm.hardware.limelightvision.LLResult;
-import com.qualcomm.hardware.limelightvision.LLResultTypes;
-import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DigitalChannel;
-import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
-import org.firstinspires.ftc.robotcore.external.Telemetry;
-import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
-import org.firstinspires.ftc.robotcore.external.hardware.camera.controls.ExposureControl;
-import org.firstinspires.ftc.robotcore.external.hardware.camera.controls.GainControl;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
@@ -59,19 +47,14 @@ import org.firstinspires.ftc.teamcode.drivers.Prism.GoBildaPrismDriver;
 import org.firstinspires.ftc.teamcode.drivers.Prism.PrismAnimations;
 import org.firstinspires.ftc.teamcode.drivers.STM32LedModule;
 import org.firstinspires.ftc.teamcode.roadrunner.Drawing;
-import org.firstinspires.ftc.vision.VisionPortal;
-import org.firstinspires.ftc.vision.opencv.ImageRegion;
-import org.firstinspires.ftc.vision.opencv.PredominantColorProcessor;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import org.firstinspires.ftc.teamcode.drivers.STM32LedModule.Direction;
-import org.firstinspires.ftc.teamcode.drivers.STM32LedModule.FadeType;
 @Config
-@TeleOp(name = "dont run this if testing shooting while moving TELEOP RED COWTOWN no sorting (looptimes, yay!)", group = "Teleop")
-public class teleopNoSort extends LinearOpMode {
-   
+@TeleOp(name = "TELEOP RED COWTOWN no sorting (looptimes, yay!)", group = "Teleop")
+public class teleopNoSort2 extends LinearOpMode {
+
     public hardwareSubNewBot h;
     public varSub v;
     public flywheelSub fly;
@@ -90,6 +73,10 @@ public class teleopNoSort extends LinearOpMode {
     PrismAnimations.Rainbow rainbow = new PrismAnimations.Rainbow();
     PrismAnimations.Sparkle sparkle = new PrismAnimations.Sparkle();
 
+    PrismAnimations.DroidScan droidScan = new PrismAnimations.DroidScan();
+    PrismAnimations.PoliceLights policeLights = new PrismAnimations.PoliceLights();
+
+    PrismAnimations.Blink blink = new PrismAnimations.Blink();
 
     int intakeState = 0;
     int previousIntakeState = -1;
@@ -101,7 +88,7 @@ public class teleopNoSort extends LinearOpMode {
     ElapsedTime flashTimer = new ElapsedTime();
     boolean isFlashing = false;
 
-    
+
     // PTO State Machine
     private boolean ptoButtonWasPressed = false;
     private boolean ptoIsEngaged = false;
@@ -119,7 +106,7 @@ public class teleopNoSort extends LinearOpMode {
     private static final double PTO_L_ENGAGED_POSITION = 0.22;
     private static final long PTO_DEPLOYMENT_DELAY_MS = 500;
 
-   
+
     double hpos, hoodangle, servoAngle, servopos;
     public static double samOffset;
 
@@ -128,7 +115,7 @@ public class teleopNoSort extends LinearOpMode {
     double ty = 72;
     double t = 1;
 
-  
+
     double samOffsetv = 0;
     private FtcDashboard dashboard;
     // Inside your OpMode class definition
@@ -142,12 +129,15 @@ public class teleopNoSort extends LinearOpMode {
     // Input debouncing
     private boolean psWasPressed = false;
     double robotX, robotY, xl, yl, hypot;
+    double newxl, newyl, newhypot, newtx, newty;
     double vx, vy, fl, fr, bl, br, max, angleToGoal, robotHeading, targetTurretRad, limitRad;
     double finalServoDegrees, trueServoPos, baseServoDegrees, velError1, velError2, velError1f, velError2f, hubAmps, intakeCmd, currentIntakePower, currentIndexerPower;
     boolean dPressed = false;
     int twistState = 0;
 
     double prevT;
+    double newt;
+    public static double samOffsett;
     @Override
     public void runOpMode() {
         controlHubVoltageSensor = hardwareMap.get(VoltageSensor.class, "Control Hub");
@@ -178,18 +168,38 @@ public class teleopNoSort extends LinearOpMode {
         sparkle.setBrightness(100);
         sparkle.setSparkleProbability(10);
 
+        droidScan.setBrightness(100);
+        policeLights.setBrightness(100);
+
+        droidScan.setDroidScanStyle(PrismAnimations.DroidScan.DroidScanStyle.BOTH_TAIL);
+        droidScan.setPrimaryColor(gold);
+        droidScan.setSecondaryColor(Color.PURPLE);
+        droidScan.setEyeWidth(30);
+        droidScan.setSpeed(10);
+
+        blink.setPrimaryColor(gold);
+        blink.setSecondaryColor(Color.PURPLE);
+        blink.setBrightness(100);
+        blink.setPrimaryColorPeriod(100, TimeUnit.MILLISECONDS);
+
+
+
+        policeLights.setPoliceLightsStyle(PrismAnimations.PoliceLights.PoliceLightsStyle.Style1);
+        policeLights.setPrimaryColor(gold);
+        policeLights.setSecondaryColor(Color.PURPLE);
+
 
         // --- MAP THE HUBS HERE ---
         allHubs = hardwareMap.getAll(LynxModule.class);
 
-      
+
 
         dashboard = FtcDashboard.getInstance();
         h = new hardwareSubNewBot(hardwareMap);
         v = new varSub();
         fly = new flywheelSub(hardwareMap);
 
-       
+
 
         // Initial hardware pos
         h.sickle.setPosition(1.0);
@@ -203,6 +213,11 @@ public class teleopNoSort extends LinearOpMode {
         boolean prevleft = left;
         boolean prevright = right;
 
+        boolean x2 = gamepad2.dpad_left;
+        boolean b2 = gamepad2.dpad_right;
+        boolean prevx = x2;
+        boolean prevb = b2;
+
         boolean aa = gamepad2.a;
         boolean bb = gamepad2.b;
         boolean prevaa = aa;
@@ -213,7 +228,7 @@ public class teleopNoSort extends LinearOpMode {
         boolean prevUp = up;
         boolean prevDown = down;
 
-       
+
 
 
         h.frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -247,7 +262,17 @@ public class teleopNoSort extends LinearOpMode {
 
             double time = matchTimer.seconds();
 
-            // 1. Determine the current phase of the match
+           /* // 1. Determine the current phase of the match
+            if (time < 15) {
+                matchState = 1;
+            } else if (time < 30) {
+                matchState = 2;
+            } else if (time <= 45) {
+                matchState = 3;
+            } else {
+                matchState = 4;
+            } */
+
             if (time < 90.0) {
                 matchState = 1;
             } else if (time < 100.0) {
@@ -278,7 +303,7 @@ public class teleopNoSort extends LinearOpMode {
                         telemetry.addData("Phase", "Endgame Warning");
                         prism.insertAndUpdateAnimation(
                                 GoBildaPrismDriver.LayerHeight.LAYER_0,
-                                new PrismAnimations.Blink(Color.RED, Color.GREEN)
+                                droidScan
                         );
                         break;
 
@@ -287,7 +312,7 @@ public class teleopNoSort extends LinearOpMode {
                         telemetry.addData("Phase", "Final Stretch");
                         prism.insertAndUpdateAnimation(
                                 GoBildaPrismDriver.LayerHeight.LAYER_0,
-                                new PrismAnimations.Solid(Color.RED)
+                                blink
                         );
                         break;
 
@@ -301,10 +326,10 @@ public class teleopNoSort extends LinearOpMode {
                 telemetry.update();
                 previousMatchState = matchState;
             }
-         
+
 
             currentVoltage = controlHubVoltageSensor.getVoltage();
-         
+
 
             // PTO Control
             if (gamepad1.left_bumper && !ptoButtonWasPressed) {
@@ -414,8 +439,8 @@ public class teleopNoSort extends LinearOpMode {
             vy = h.pip.getVelY(DistanceUnit.INCH);
             vx = h.pip.getVelX(DistanceUnit.INCH);
 
-            tx = -72 - (vx * t);
-            ty =  72 - (vy * t);
+            tx = -72;
+            ty =  72;
 
             h.pip.update();
 
@@ -426,7 +451,7 @@ public class teleopNoSort extends LinearOpMode {
             yl = ty - robotY;
             hypot = Math.sqrt((xl * xl) + (yl * yl));
 
-            // Predictive lookahead scalar
+           /* // Predictive lookahead scalar
             if (hypot < 72){
                 t = 0.01 * hypot + 0.053;
             } else if(hypot > 72 && hypot < 96) {
@@ -442,6 +467,23 @@ public class teleopNoSort extends LinearOpMode {
             }
             prevT = t;
 
+            b2  = gamepad2.b;
+            x2 = gamepad2.x;
+
+            // Turret trims
+            if (b2 && !prevb && !x2) samOffsett = Range.clip(samOffsett + 2.5, -40, 40);
+            if (x2 && !prevx && !b2) samOffsett = Range.clip(samOffsett - 2.5, -40, 40);
+            prevb = b2;
+            prevx = x2;
+
+            newt = t + samOffsett;
+
+            newtx = -72 - (vx * t);
+            newty =  72 - (vy * t);
+
+            newxl = newtx - robotX;
+            newyl = newty - robotY;
+            newhypot = Math.sqrt((newxl * newxl) + (newyl * newyl));*/
 
             // Turret calculation
             angleToGoal     = Math.atan2(yl, xl);
@@ -607,6 +649,7 @@ public class teleopNoSort extends LinearOpMode {
             packet.put("VEL ERROR1 with flywheel as telem", velError1f);
             packet.put("VEL ERROR2 with flywheel as telem", velError2f);
             telemetry.addData("hypot",hypot);
+            telemetry.addData("new hypot",newhypot);
             dashboard.sendTelemetryPacket(packet);
             telemetry.addData("hpos", hpos);
             telemetry.addData("RPM Flywheel Average", "%.3f", fly.getRotation(flywheelSub.MeasureUnit.REVOLUTIONS, flywheelSub.TimeScale.MINUTES));

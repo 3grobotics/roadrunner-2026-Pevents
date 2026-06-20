@@ -188,7 +188,7 @@ public class farBlueflushandspike12WithLeave extends LinearOpMode {
 
         private class lowerVelocity implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                offset = -15;
+                offset = 0;
                 return false;
             }
         }
@@ -196,8 +196,8 @@ public class farBlueflushandspike12WithLeave extends LinearOpMode {
 
         private class turret1 implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                turret1.setPosition(.8);
-                turret2.setPosition(.8);
+                turret1.setPosition(.8);// was .8
+                turret2.setPosition(.8);// was .8
                 return false;
             }
         }
@@ -205,8 +205,8 @@ public class farBlueflushandspike12WithLeave extends LinearOpMode {
 
         private class turret2 implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                turret1.setPosition(.79);
-                turret2.setPosition(.79);
+                turret1.setPosition(.79);// was .79
+                turret2.setPosition(.79);// was .79
                 return false;
             }
         }
@@ -314,7 +314,6 @@ public class farBlueflushandspike12WithLeave extends LinearOpMode {
         Action TEST = drive.actionBuilder(initialPose)
 
                 .waitSeconds(1)
-                .stopAndAdd(robot.lowerVelocity())
                 .stopAndAdd( robot.turret1())
                 .waitSeconds(.1)
                 .stopAndAdd(robot.fire())
@@ -327,7 +326,7 @@ public class farBlueflushandspike12WithLeave extends LinearOpMode {
                 // pickup
                 .afterDisp(0, robot.intake())
                 .setTangent(Math.toRadians(180))
-                .splineToLinearHeading( new Pose2d(30, -40, Math.toRadians(-90)), Math.toRadians(180),adaptiveBrake)
+                .splineToLinearHeading( new Pose2d(30, -30, Math.toRadians(-90)), Math.toRadians(180),adaptiveBrake)
 
                 .setTangent(Math.toRadians(270))
                 .splineToSplineHeading(new Pose2d(30, -60, Math.toRadians(-90)), Math.toRadians(270), adaptiveBrake)

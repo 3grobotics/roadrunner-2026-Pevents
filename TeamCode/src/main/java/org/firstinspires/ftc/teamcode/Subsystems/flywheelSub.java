@@ -97,7 +97,7 @@ public class flywheelSub {
         prevUp = up;
         prevDown = down;
 
-        samOffsetV = -230.769 * voltage + 2715.382;
+        samOffsetV = -230.769 * Range.clip(voltage, 0, 12.2) + 2715.382;
         double finalOffset = samOffsetV + samOffsetV2;
         target = target + finalOffset;
 

@@ -194,8 +194,8 @@ public class fifteenUnsortedblue extends LinearOpMode {
 
         private class turret2 implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                turret1.setPosition(.87);
-                turret2.setPosition(.87);
+                turret1.setPosition(.865);
+                turret2.setPosition(.865);
                 return false;
             }
         }
@@ -203,8 +203,8 @@ public class fifteenUnsortedblue extends LinearOpMode {
 
         private class turret3 implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                turret1.setPosition(.33);
-                turret2.setPosition(.33);
+                turret1.setPosition(.63);
+                turret2.setPosition(.63);
                 return false;
             }
         }
@@ -293,6 +293,14 @@ public class fifteenUnsortedblue extends LinearOpMode {
             }
         };
 
+        VelConstraint baseVelConstraintfire = (robotPose, _path, _disp) -> {
+            if (robotPose.position.x.value() < -15 && robotPose.position.y.value() > -15) {
+                return 30;
+            } else {
+                return 50.0;
+            }
+        };
+
         VelConstraint adaptiveBrakeneoooom = (robotPose, path, pathPos) -> {
             return 10000;
         };
@@ -319,9 +327,12 @@ public class fifteenUnsortedblue extends LinearOpMode {
                 .afterDisp(0, robot.turret1())
                 .afterDisp(0, robot.raiseVelocity())
 
-                .afterDisp(10, robot.fire())
                 .setTangent(Math.toRadians(-315))
                 .splineToSplineHeading(new Pose2d(-25, -25, Math.toRadians(-37)), Math.toRadians(-315))
+                .stopAndAdd(robot.fire())
+                .waitSeconds(1)
+                .stopAndAdd(robot.stopFire())
+
 
                 // intake first spike (fourth, fifth and sixth artifact pickup)
                 .afterDisp(0, robot.lowerVelocity())
@@ -346,7 +357,7 @@ public class fifteenUnsortedblue extends LinearOpMode {
                 .setTangent(Math.toRadians(-270))
                 .splineToLinearHeading(new Pose2d(5, -36, Math.toRadians(-90)), Math.toRadians(-270))
                 .setTangent(Math.toRadians(-270))
-                .splineToSplineHeading(new Pose2d(-20, -24, Math.toRadians(-90)), Math.toRadians(-225))
+                .splineToSplineHeading(new Pose2d(-20, -24, Math.toRadians(-90)), Math.toRadians(-225), baseVelConstraintfire)
                 .stopAndAdd(robot.fire())
                 .waitSeconds(1)
                 .stopAndAdd(robot.stopFire())
@@ -374,7 +385,7 @@ public class fifteenUnsortedblue extends LinearOpMode {
                 .setTangent(Math.toRadians(-270))
                 .splineToLinearHeading(new Pose2d(5, -36, Math.toRadians(-90)), Math.toRadians(-270))
                 .setTangent(Math.toRadians(-270))
-                .splineToSplineHeading(new Pose2d(-10, -24, Math.toRadians(-90)), Math.toRadians(-225))
+                .splineToSplineHeading(new Pose2d(-10, -24, Math.toRadians(-90)), Math.toRadians(-225), baseVelConstraintfire)
                 .stopAndAdd(robot.fire())
                 .waitSeconds(1)
                 .stopAndAdd(robot.stopFire())
@@ -385,8 +396,8 @@ public class fifteenUnsortedblue extends LinearOpMode {
 
                 .afterDisp(0, robot.stopFire())
                 .afterDisp(5, robot.turret2())
-                .setTangent(Math.toRadians(-270))
-                .splineToSplineHeading(new Pose2d(-10, -24, Math.toRadians(-90)), Math.toRadians(-225))
+                .setTangent(Math.toRadians(90))
+                .splineToLinearHeading(new Pose2d(-10, -24, Math.toRadians(-90)), Math.toRadians(-225), baseVelConstraintfire)
                 .stopAndAdd(robot.fire())
                 .waitSeconds(1)
                 .stopAndAdd(robot.stopFire())
@@ -410,11 +421,11 @@ public class fifteenUnsortedblue extends LinearOpMode {
 
                 // drive to zone for first gate pickup shot (fourth, fifth and sixth artifact shot)
                 .afterDisp(24, robot.stopFire())
-                .afterDisp(5, robot.turret2())
+                .afterDisp(5, robot.turret3())
                 .setTangent(Math.toRadians(-270))
                 .splineToLinearHeading(new Pose2d(5, -36, Math.toRadians(-90)), Math.toRadians(-270))
                 .setTangent(Math.toRadians(-270))
-                .splineToSplineHeading(new Pose2d(-10, -24, Math.toRadians(-90)), Math.toRadians(-225))
+                .splineToSplineHeading(new Pose2d(-20, -24, Math.toRadians(0)), Math.toRadians(-225), baseVelConstraintfire)
                 .stopAndAdd(robot.fire())
                 .waitSeconds(1)
                 .stopAndAdd(robot.stopFire())
@@ -422,7 +433,7 @@ public class fifteenUnsortedblue extends LinearOpMode {
 
 
                 .setTangent(Math.toRadians(-180))
-                .splineToLinearHeading(new Pose2d(-60.12616976039617,  -36.806707907849415, Math.toRadians(-90)), Math.toRadians(-180), adaptiveBrakeneoooom)
+                .splineToLinearHeading(new Pose2d(-60.12616976039617,  -36.806707907849415, Math.toRadians(0)), Math.toRadians(-180), adaptiveBrakeneoooom)
 
 /*
                     // intake second spike mark (seventh, eighth and ninth artifact pickup)

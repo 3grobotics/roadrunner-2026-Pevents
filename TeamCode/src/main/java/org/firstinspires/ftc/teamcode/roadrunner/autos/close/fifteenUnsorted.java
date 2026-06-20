@@ -194,8 +194,8 @@ public class fifteenUnsorted extends LinearOpMode {
 
         private class turret2 implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                turret1.setPosition(.14);
-                turret2.setPosition(.14);
+                turret1.setPosition(.135);
+                turret2.setPosition(.135);
                 return false;
             }
         }
@@ -218,6 +218,14 @@ public class fifteenUnsorted extends LinearOpMode {
             }
         }
         public Action turret4() { return new turret4(); }
+
+        private class lowerVelocity2 implements Action {
+            @Override public boolean run(@NonNull TelemetryPacket p) {
+                offset = -30;
+                return false;
+            }
+        }
+        public Action lowerVelocity2() { return new lowerVelocity2(); }
     }
 
     @Override
@@ -314,11 +322,15 @@ public class fifteenUnsorted extends LinearOpMode {
                     // first volley driving away from zone (first, second and third artifact shot)
                     .waitSeconds(1)
                     .afterDisp(0, robot.turret1())
-                    .afterDisp(0, robot.raiseVelocity())
+                    //.afterDisp(0, robot.lowerVelocity2())
 
-                    .afterDisp(10, robot.fire())
+
                     .setTangent(Math.toRadians(315))
                     .splineToSplineHeading(new Pose2d(-25, 25, Math.toRadians(37)), Math.toRadians(315))
+                    .stopAndAdd(robot.fire())
+                    .waitSeconds(1)
+                    .stopAndAdd(robot.stopFire())
+
 
                     // intake first spike (fourth, fifth and sixth artifact pickup)
                     .afterDisp(0, robot.lowerVelocity())
@@ -351,14 +363,14 @@ public class fifteenUnsorted extends LinearOpMode {
                     //cc here
 
                     // first gate pickup (thirteenth, fourteenth and fifteenth artifact pickup)
-                // heading (deg): 124.12017218615657
-                //x: 8.69645632773257
-                //y: 55.082679522912116
+                    // heading (deg): 124.12017218615657
+                    //x: 8.69645632773257
+                    //y: 55.082679522912116
                     .afterDisp(0, robot.intake())
                     .setTangent(Math.toRadians(0))
                     .splineToLinearHeading(new Pose2d(0, 24, Math.toRadians(90)), Math.toRadians(90))
                     .setTangent(Math.toRadians(90))
-                    .splineToSplineHeading(new Pose2d(6.69645632773257, 60, Math.toRadians(120.12017218615657)), Math.toRadians(90))
+                    .splineToSplineHeading(new Pose2d(6.69645632773257, 60, Math.toRadians(125.12017218615657)), Math.toRadians(90))
                     /*.setTangent(Math.toRadians(90))
                     .waitSeconds(.00001)
                     .splineToSplineHeading(new Pose2d(15, 60, Math.toRadians(135)), Math.toRadians(45))*/
@@ -369,32 +381,33 @@ public class fifteenUnsorted extends LinearOpMode {
                     .afterDisp(24, robot.stopFire())
                     .afterDisp(5, robot.turret2())
                     .setTangent(Math.toRadians(270))
-                    .splineToLinearHeading(new Pose2d(5, 36, Math.toRadians(90)), Math.toRadians(270))
+                    .splineToSplineHeading(new Pose2d(5, 36, Math.toRadians(90)), Math.toRadians(270))
                     .setTangent(Math.toRadians(270))
-                    .splineToSplineHeading(new Pose2d(-20, 18, Math.toRadians(90)), Math.toRadians(225))
+                    .splineToLinearHeading(new Pose2d(-20, 18, Math.toRadians(90)), Math.toRadians(225))
                     .stopAndAdd(robot.fire())
                     .waitSeconds(1)
                     .stopAndAdd(robot.stopFire())
 
 
-                .afterDisp(0, robot.intake())
-                .setTangent(Math.toRadians(270))
-                .splineToLinearHeading(new Pose2d(-20, 55, Math.toRadians(90)), Math.toRadians(270))
+                    .afterDisp(0, robot.intake())
+                    .setTangent(Math.toRadians(90))
+                    .splineToSplineHeading(new Pose2d(-16, 55, Math.toRadians(90)), Math.toRadians(90))
 
-                //.afterDisp(0, robot.stopFire())
-                .afterDisp(5, robot.turret2())
-                .setTangent(Math.toRadians(270))
-                .splineToSplineHeading(new Pose2d(-20, 24, Math.toRadians(90)), Math.toRadians(270))
-                .stopAndAdd(robot.fire())
-                .waitSeconds(1)
-                .stopAndAdd(robot.stopFire())
+                    //.afterDisp(0, robot.stopFire())
+                    .afterDisp(5, robot.turret2())
+                    .setTangent(Math.toRadians(270))
+                    .splineToLinearHeading(new Pose2d(-20, 18, Math.toRadians(90)), Math.toRadians(270))
+                    //.waitSeconds(.2)
+                    .stopAndAdd(robot.fire())
+                    .waitSeconds(1)
+                    .stopAndAdd(robot.stopFire())
 
                      // second gate pickup (thirteenth, fourteenth and fifteenth artifact pickup)
                     .afterDisp(0, robot.intake())
                     .setTangent(Math.toRadians(0))
                     .splineToLinearHeading(new Pose2d(0, 24, Math.toRadians(90)), Math.toRadians(90))
                     .setTangent(Math.toRadians(90))
-                    .splineToSplineHeading(new Pose2d(6.69645632773257, 60, Math.toRadians(120.12017218615657)), Math.toRadians(90))
+                    .splineToSplineHeading(new Pose2d(6.69645632773257, 60, Math.toRadians(125.12017218615657)), Math.toRadians(90))
                     /*.setTangent(Math.toRadians(90))
                     .waitSeconds(.00001)
                     .splineToSplineHeading(new Pose2d(15, 60, Math.toRadians(135)), Math.toRadians(45))*/
@@ -405,17 +418,17 @@ public class fifteenUnsorted extends LinearOpMode {
                     .afterDisp(24, robot.stopFire())
                     .afterDisp(5, robot.turret2())
                     .setTangent(Math.toRadians(270))
-                    .splineToLinearHeading(new Pose2d(5, 36, Math.toRadians(90)), Math.toRadians(270))
+                    .splineToSplineHeading(new Pose2d(5, 36, Math.toRadians(90)), Math.toRadians(270))
                     .setTangent(Math.toRadians(270))
-                    .splineToSplineHeading(new Pose2d(-20, 18, Math.toRadians(90)), Math.toRadians(225))
+                    .splineToLinearHeading(new Pose2d(-20, 18, Math.toRadians(90)), Math.toRadians(225))
                     .stopAndAdd(robot.fire())
                     .waitSeconds(1)
                     .stopAndAdd(robot.stopFire())
 
 
 
-                .setTangent(Math.toRadians(180))
-                .splineToLinearHeading(new Pose2d(-61.3784, 20, Math.toRadians(90)), Math.toRadians(180), adaptiveBrakeneoooom)
+                    .setTangent(Math.toRadians(180))
+                    .splineToLinearHeading(new Pose2d(-61.3784, 20, Math.toRadians(90)), Math.toRadians(180), adaptiveBrakeneoooom)
 
                 .build();
 
