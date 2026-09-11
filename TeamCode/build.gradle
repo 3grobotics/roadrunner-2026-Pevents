@@ -39,8 +39,10 @@ repositories {
 dependencies {
     implementation project(':FtcRobotController')
     implementation "com.acmerobotics.roadrunner:ftc:0.1.25"
-    implementation "com.acmerobotics.roadrunner:core:1.0.1"
-    implementation "com.acmerobotics.roadrunner:actions:1.0.1"
+    //implementation "com.acmerobotics.roadrunner:core:1.0.1"
+    //implementation "com.acmerobotics.roadrunner:actions:1.0.1"
+    implementation project(':core')
+    implementation project(':actions')
     implementation 'com.acmerobotics.dashboard:dashboard:0.6.0'
 
     implementation "org.solverslib:core:0.3.4" // core

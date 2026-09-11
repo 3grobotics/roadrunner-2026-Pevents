@@ -188,7 +188,7 @@ public class farBlueflushOnly extends LinearOpMode {
 
         private class lowerVelocity implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                offset = -10;
+                offset = 15;
                 return false;
             }
         }
