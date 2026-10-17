@@ -16,138 +16,145 @@ public class flywheelSub {
         MILLISECONDS, SECONDS, MINUTES, HOURS
     }
 
+    public enum FlywheelSide {
+        LEFT, RIGHT, AVERAGE
+    }
+
     // --- Flywheel Hardware & Measurement Variables ---
     public static double WHEEL_DIAMETER_INCHES = 2.834646;
     public static double MOTOR_TICKS_PER_REV = 28.0;     // Bare goBILDA motor without gearbox
-    public static double EXTERNAL_GEAR_RATIO = 1.333333;
-
-    // Local calculation variables
-    public double ticksPerSec;
-    public double revsPerSec;
-    public double revsPerTime;
-    public double linearInches;
+    public static double EXTERNAL_GEAR_RATIO = 1;
 
     // --- Target & Distance Variables ---
-    public volatile double target = 0;
-    public volatile double target2 = 0;
+    public volatile double rightTarget = 0;
+    public volatile double leftTarget = 0;
     public double hypot = 0; // OpMode must update this before calling loop()!
 
-    public double samOffsetV = 0;
-    public double samOffsetV2 = 0;
-    private final DcMotorEx flywheel1;
-    private final DcMotorEx flywheel2;
+    // Offsets
+    public double voltageOffset = 0;
+    public double manualOffsetRight = 0;
+    public double manualOffsetLeft = 0;
 
+    private final DcMotorEx rightFlywheel;
+    //private final DcMotorEx leftFlywheel;
 
-    // --- PID gains ---
-    public double kP = .00033;
-    public double kI = .05;
-    public double kD = 0.000;
-    public double kF = 0.0003;
+    // Right Turret PIDF Gains
+    public static double rightKp = 0.001;
+    public static double rightKi = 0.0001;
+    public static double rightKd = 0.00001;
+    public static double rightKf = 0.000195;
+
+    // Left Turret PIDF Gains
+    public static double leftKp = .00033;
+    public static double leftKi = .05;
+    public static double leftKd = 0.000;
+    public static double leftKf = 0.0003;
+
+    // Inputs for Right Flywheel manual offset
     public boolean up = false;
     public boolean down = false;
     public boolean prevUp = false;
     public boolean prevDown = false;
 
+    // Inputs for Left Flywheel manual offset
     public boolean up2 = false;
     public boolean down2 = false;
     public boolean prevUp2 = false;
     public boolean prevDown2 = false;
 
-
-    public double voltage;
+    public double voltage; // OpMode must update this!
     public volatile boolean loopActive = false;
-    public PIDFController spinController = new PIDFController(kP, kI, kD, kF);
+
+    // Independent PID Controllers for each flywheel
+    public PIDFController rightSpinController = new PIDFController(rightKp, rightKi, rightKd, rightKf);
+    //public PIDFController leftSpinController = new PIDFController(leftKp, leftKi, leftKd, leftKf);
 
     public flywheelSub(HardwareMap hardwareMap) {
-        flywheel1 = hardwareMap.get(DcMotorEx.class, "flywheel1");
-        flywheel2 = hardwareMap.get(DcMotorEx.class, "flywheel2");
-        flywheel1.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
-        flywheel2.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
-        flywheel1.setDirection(DcMotorEx.Direction.REVERSE);
-        flywheel2.setDirection(DcMotorEx.Direction.REVERSE);
+        rightFlywheel = hardwareMap.get(DcMotorEx.class, "rightFlywheel");
+        //leftFlywheel = hardwareMap.get(DcMotorEx.class, "leftFlywheel");
+
+        rightFlywheel.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.FLOAT);
+        //leftFlywheel .setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.FLOAT);
+
+        // CHECK YOUR BUILD: If these are side-by-side flywheels, one usually needs
+        // to be FORWARD and the other REVERSE to feed a piece through.
+        rightFlywheel.setDirection(DcMotorEx.Direction.REVERSE);
+        //leftFlywheel.setDirection(DcMotorEx.Direction.REVERSE);
     }
 
     public void loop() {
         if (!loopActive) return;
 
-        // 1) Calculate target RPM into a temporary local variable first
-        double newTarget = 0;
+        // 1) Calculate base target RPM based on distance
+        double baseTarget = 0;
 
-        if (hypot < 72) {
-            newTarget = 2.083 * hypot + 1600.016;
-        } else if (hypot > 72 && hypot < 96) {
-            newTarget = 8.333 * hypot + 1150.024;
-        } else if (hypot > 96 && hypot < 120) {
-            newTarget = 16.667 * hypot + 349.968;
-        } else if (hypot > 120 && hypot < 144) {
-            newTarget = 6.25 * hypot + 1600;
-        } else if (hypot > 144) {
-            newTarget = 12.5 * hypot + 700;
+        if (hypot <= 29) {
+            baseTarget = 24.59 * hypot + 2279.512;
+        } else if (hypot > 29 && hypot <= 39) {
+            baseTarget = 3000;
+        } else if (hypot > 39 && hypot <= 44) {
+            baseTarget = 9.615 * hypot + 2625.015;
+        } else if (hypot > 44) {
+            baseTarget = 15.625 * hypot + 2359.375;
         }
 
-        // 2) Clip the local variable and assign it to the volatile 'target' in ONE atomic step
-        target = Range.clip(newTarget, 0, 6000);
+        baseTarget = Range.clip(baseTarget, 0, 6000);
+
+        // 2) Handle Manual Offsets
+        // Right Wheel Offset
         if (up && !prevUp && !down) {
-            samOffsetV2 = Range.clip(samOffsetV2 + 50, -2000, 2000);
+            manualOffsetRight = Range.clip(manualOffsetRight + 50, -2000, 2000);
         }
         if (down && !prevDown && !up) {
-            samOffsetV2 = Range.clip(samOffsetV2 - 50, -2000, 2000);
+            manualOffsetRight = Range.clip(manualOffsetRight - 50, -2000, 2000);
         }
-
         prevUp = up;
         prevDown = down;
 
-        samOffsetV = -230.769 * Range.clip(voltage, 0, 12.2) + 2715.382;
-        double finalOffset = samOffsetV + samOffsetV2;
-        target = target + finalOffset;
+        // Left Wheel Offset
+        //if (up2 && !prevUp2 && !down2) {
+        //    manualOffsetLeft = Range.clip(manualOffsetLeft + 50, -2000, 2000);
+        //}
+        //if (down2 && !prevDown2 && !up2) {
+        //    manualOffsetLeft = Range.clip(manualOffsetLeft - 50, -2000, 2000);
+        //}
+        //prevUp2 = up2;
+        //prevDown2 = down2;
 
-        // 2) Read sensors (using the dynamic gear ratio instead of hardcoded 37.333)
+        // 3) Calculate shared Voltage Offset
+        voltageOffset = -230.769 * Range.clip(voltage, 0, 12.2) + 2715.382;
+
+        // 4) Assign final specific targets in ONE atomic step
+        rightTarget = baseTarget /* + voltageOffset*/ + manualOffsetRight;
+        //leftTarget = baseTarget + voltageOffset + manualOffsetLeft;
+
+        // 5) Read sensors independently
         double effectiveTPR = MOTOR_TICKS_PER_REV * EXTERNAL_GEAR_RATIO;
-        double currentSpeed = (((flywheel1.getVelocity() + flywheel2.getVelocity()) / 2) * 60) / effectiveTPR;
 
-        // 3) PID calculation
-        double pid = spinController.calculate(currentSpeed, target);
+        double currentSpeedRight = (rightFlywheel.getVelocity() * 60.0) / effectiveTPR;
+        //double currentSpeedLeft = (leftFlywheel.getVelocity() * 60.0) / effectiveTPR;
 
-        // 4) Apply power (clip at ±1)
-        double power = Math.max(-1, Math.min(1, pid));
+        // 6) Independent PID calculations
+        double pidRight = rightSpinController.calculate(currentSpeedRight, rightTarget);
+        //double pidLeft = leftSpinController.calculate(currentSpeedLeft, leftTarget);
 
+        // 7) Apply power (clip at ±1)
+        double powerRight = Math.max(-1, Math.min(1, pidRight));
+        //double powerLeft = Math.max(-1, Math.min(1, pidLeft));
 
-        flywheel1.setPower(power);
-        flywheel2.setPower(power);
-
-
-       /* // 2) Clip the local variable and assign it to the volatile 'target' in ONE atomic step
-        target2 = Range.clip(newTarget, 0, 6000);
-        if (up2 && !prevUp2 && !down2) {
-            samOffsetV2 = Range.clip(samOffsetV2 + 50, -2000, 2000);
-        }
-        if (down2 && !prevDown2 && !up2) {
-            samOffsetV2 = Range.clip(samOffsetV2 - 50, -2000, 2000);
-        }
-
-        prevUp2 = up2;
-        prevDown2 = down2;
-
-        target2 = target2 + samOffsetV2;
-
-        // 2) Read sensors (using the dynamic gear ratio instead of hardcoded 37.333)
-        double effectiveTPR2 = MOTOR_TICKS_PER_REV * EXTERNAL_GEAR_RATIO;
-        double currentSpeed2 = ((flywheel2.getVelocity() / 2) * 60) / effectiveTPR2;
-
-        // 3) PID calculation
-        double pid2 = spinController.calculate(currentSpeed2, target2);
-
-        // 4) Apply power (clip at ±1)
-        double power2 = Math.max(-1, Math.min(1, pid2));
-
-
-
-
-        flywheel2.setPower(power2);*/
+        rightFlywheel.setPower(powerRight);
+        //leftFlywheel.setPower(powerLeft);
     }
 
     /**
-     * Calculates the current velocity of the flywheel in a specified measurement unit and time scale.
+     * Default getRotation assumes you want the AVERAGE of both wheels.
+     */
+    public double getRotation(MeasureUnit unit, TimeScale timeScale) {
+        return getRotation(unit, timeScale, FlywheelSide.AVERAGE);
+    }
+
+    /**
+     * Calculates the current velocity of a specific flywheel in a specified measurement unit and time scale.
      * <p>
      * This method dynamically converts the raw motor ticks into either rotational speed
      * (e.g., RPM, degrees per second) or linear surface speed (e.g., miles per hour, meters per second).
@@ -155,31 +162,48 @@ public class flywheelSub {
      * <b>Important:</b> Any calculation requesting a linear {@link MeasureUnit} (INCHES, FEET, MILES, etc.)
      * relies entirely on the {@code WHEEL_DIAMETER_INCHES} and the {@code EXTERNAL_GEAR_RATIO} class variables. Ensure these variables are set to the
      * exact physical diameter and gear ratio of your flywheel for accurate telemetry.
+     *
      * @param unit      The desired unit of measurement (e.g., {@code MeasureUnit.MILES}, {@code MeasureUnit.REVOLUTIONS}).
      * @param timeScale The desired time division (e.g., {@code TimeScale.HOURS}, {@code TimeScale.MINUTES}).
+     * @param side      The specific flywheel to measure (e.g., {@code FlywheelSide.LEFT}, {@code FlywheelSide.RIGHT}).
      * @return          The calculated speed of the flywheel as a {@code double}.
      * <p>
-     *  <b>Example Usage:</b>
+     * <b>Example Usage:</b>
      * <pre>{@code
-     * // Get Revolutions Per Minute (RPM)
-     * double rpm = getRot(MeasureUnit.REVOLUTIONS, TimeScale.MINUTES);
-     *  // Get surface speed in Miles Per Hour (MPH)
-     * double mph = getRot(MeasureUnit.MILES, TimeScale.HOURS);
+     * // Get average Revolutions Per Minute (RPM) of both flywheels
+     * double avgRpm = fly.getRotation(MeasureUnit.REVOLUTIONS, TimeScale.MINUTES);
+     *
+     * // Get surface speed of just the left flywheel in Miles Per Hour (MPH)
+     * double leftMph = fly.getRotation(MeasureUnit.MILES, TimeScale.HOURS, FlywheelSide.LEFT);
      * }</pre>
      */
-    public double getRotation(MeasureUnit unit, TimeScale timeScale) {
+    public double getRotation(MeasureUnit unit, TimeScale timeScale, FlywheelSide side) {
 
         // Calculate the true ticks-per-revolution of the final wheel structure
         double effectiveTPR = MOTOR_TICKS_PER_REV * EXTERNAL_GEAR_RATIO;
 
-        // 1) Get raw ticks per second from the motors
-        ticksPerSec = (flywheel1.getVelocity() + flywheel2.getVelocity()) / 2.0;
+        // Use local variables to prevent Thread cross-contamination in telemetry
+        double ticksPerSec = 0;
+
+        // 1) Get raw ticks per second from the requested motor(s)
+        switch (side) {
+            case RIGHT:
+                ticksPerSec = rightFlywheel.getVelocity();
+                break;
+            //case LEFT:
+            //    ticksPerSec = leftFlywheel.getVelocity();
+            //    break;
+            case AVERAGE:
+            default:
+                ticksPerSec = (rightFlywheel.getVelocity()) /*+ leftFlywheel.getVelocity()) / 2.0*/;
+                break;
+        }
 
         // 2) Convert to a baseline of Revolutions Per Second using the dynamic ratio
-        revsPerSec = ticksPerSec / effectiveTPR;
+        double revsPerSec = ticksPerSec / effectiveTPR;
 
         // 3) Scale to the requested Time format
-        revsPerTime = revsPerSec;
+        double revsPerTime = revsPerSec;
         switch (timeScale) {
             case MILLISECONDS: revsPerTime /= 1000.0; break;
             case SECONDS:      break; // Default base
@@ -188,6 +212,7 @@ public class flywheelSub {
         }
 
         // 4) Convert to the requested Measurement Unit
+        double linearInches;
         switch (unit) {
             // --- Rotational Math ---
             case TICKS:       return revsPerTime * effectiveTPR;
@@ -224,12 +249,11 @@ public class flywheelSub {
 
     public void runFlywheel() {
         loopActive = true;
-        // The loop will now automatically handle setting 'target' based on 'hypot'
     }
 
     public void power0() {
         loopActive = false;
-        flywheel1.setPower(0);
-        flywheel2.setPower(0);
+        rightFlywheel.setPower(0);
+        //leftFlywheel.setPower(0);
     }
 }

@@ -11,7 +11,7 @@ import com.noahbres.meepmeep.roadrunner.entity.RoadRunnerBotEntity;
 public class meepmeep {
     public static void main(String[] args) {
         MeepMeep meepMeep = new MeepMeep(700);
-        Pose2d initialPose = new Pose2d(-10, -24, Math.toRadians(-90));
+        Pose2d initialPose = new Pose2d(62, -39, Math.toRadians(180));
         RoadRunnerBotEntity myBot = new DefaultBotBuilder(meepMeep)
                 // Set bot constraints: maxVel, maxAccel, maxAngVel, maxAngAccel, track width
                 .setConstraints(60, 60, Math.toRadians(180), Math.toRadians(180), 16)
@@ -23,28 +23,37 @@ public class meepmeep {
 
         myBot.runAction(myBot.getDrive().actionBuilder(initialPose)
 
-                //.afterDisp(0, robot.intake())
-                .setTangent(Math.toRadians(0))
-                .splineToLinearHeading(new Pose2d(35, -20, Math.toRadians(270)), Math.toRadians(0))
-                .setTangent(Math.toRadians(270))
-                .splineToLinearHeading(new Pose2d(35, -55, Math.toRadians(270)), Math.toRadians(270))
+                .setTangent(Math.toRadians(180))
+                .splineToLinearHeading(new Pose2d(24, -52, Math.toRadians(180)), Math.toRadians(180))
 
-                //.afterDisp(10, robot.stopFire())
-                .setTangent(Math.toRadians(90))
-                .splineToLinearHeading(new Pose2d(35, -28, Math.toRadians(0)), Math.toRadians(90))
-                .setTangent(Math.toRadians(90))
-                .splineToConstantHeading(new Vector2d(-20,-24), Math.toRadians(180))
-                //.stopAndAdd(robot.fire())
                 .waitSeconds(1)
-                //.stopAndAdd(robot.stopFire())
-
 
                 .setTangent(Math.toRadians(180))
-                .splineToLinearHeading(new Pose2d(-60.12616976039617,  -36.806707907849415, Math.toRadians(0)), Math.toRadians(180)/*, adaptiveBrakeneoooom*/)
+                .splineToLinearHeading(new Pose2d(-45, -52, Math.toRadians(180)), Math.toRadians(180))
+
+                //.waitSeconds(.1)
+
+                .setTangent(Math.toRadians(180))
+                .splineToLinearHeading(new Pose2d(-52, -24, Math.toRadians(180)), Math.toRadians(90))
+
+                //.waitSeconds(.1)
+
+                .setTangent(Math.toRadians(270))
+                .splineToLinearHeading(new Pose2d(-52, -57, Math.toRadians(180)), Math.toRadians(270))
+
+
 
                 .build());
 
-        meepMeep.setBackground(MeepMeep.Background.FIELD_DECODE_JUICE_DARK)
+        /*flower to wall dump pickup
+        .setTangent(Math.toRadians(0))
+                .splineToLinearHeading(new Pose2d(50, -52, Math.toRadians(315)), Math.toRadians(0))
+         .setTangent(Math.toRadians(0))
+                .splineToSplineHeading(new Pose2d(59, -40, Math.toRadians(70)), Math.toRadians(90))
+                .setTangent(Math.toRadians(90))
+                .splineToLinearHeading(new Pose2d(59, -12, Math.toRadians(70)), Math.toRadians(90))*/
+
+        meepMeep.setBackground(MeepMeep.Background.FIELD_BIOBUZZ_JUICE_DARK)
                 .setDarkMode(true)
                 .setBackgroundAlpha(0.95f)
                 .addEntity(myBot)

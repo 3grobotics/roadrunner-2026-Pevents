@@ -16,10 +16,10 @@ public class setServo0 extends LinearOpMode {
     @Override
     public void runOpMode() {
 
-        t1 = hardwareMap.get(ServoImplEx.class,"turret");
+        t1 = hardwareMap.get(ServoImplEx.class,"turret1");
         t2 = hardwareMap.get(ServoImplEx.class,"turret2");
-        h = hardwareMap.get( ServoImplEx.class,"hood");
-        h.setDirection(Servo.Direction.REVERSE);
+        //h = hardwareMap.get( ServoImplEx.class,"hood");
+        //h.setDirection(Servo.Direction.REVERSE);
         t1.setDirection(Servo.Direction.REVERSE);
         t2.setDirection(Servo.Direction.REVERSE);
 
@@ -33,8 +33,8 @@ public class setServo0 extends LinearOpMode {
 
         t1.setPosition(0.0);
         t2.setPosition(0.0);
-        h.setPosition(0.0);
-            telemetry.addData("hood position", h.getPosition());
+       // h.setPosition(0.0);
+       //     telemetry.addData("hood position", h.getPosition());
             telemetry.update();
         }
     }

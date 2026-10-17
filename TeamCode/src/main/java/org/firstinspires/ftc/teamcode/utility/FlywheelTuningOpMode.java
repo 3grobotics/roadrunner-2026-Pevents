@@ -13,25 +13,35 @@ import com.seattlesolvers.solverslib.controller.PIDFController;
 public class FlywheelTuningOpMode extends OpMode {
 
     // --- Hardware ---
-    private DcMotorEx flywheel1;
-    private DcMotorEx flywheel2;
+    private DcMotorEx rightFlywheel;
+    //private DcMotorEx leftFlywheel;
 
     // --- Hardware Constants ---
     public static double MOTOR_TICKS_PER_REV = 28.0;
-    public static double EXTERNAL_GEAR_RATIO = 1.333333;
+    public static double EXTERNAL_GEAR_RATIO = 1;
 
     //-------------------------------------------------------------------------
     // FTC Dashboard Live Variables
     //-------------------------------------------------------------------------
-    public static double kP = .00033;
-    public static double kI = .05;
-    public static double kD = 0.000;
-    public static double kF = 0.0003;
 
+    // Right Turret PIDF Gains
+    public static double rightKp = .00033;
+    public static double rightKi = .05;
+    public static double rightKd = 0.000;
+    public static double rightKf = 0.0003;
+
+    // Left Turret PIDF Gains
+    public static double leftKp = .00033;
+    public static double leftKi = .05;
+    public static double leftKd = 0.000;
+    public static double leftKf = 0.0003;
+
+    // Shared Target
     public static double targetRPM = 2000; // Target velocity to test
 
-    // FTCLib PIDFController
-    public PIDFController flywheelController = new PIDFController(kP, kI, kD, kF);
+    // FTCLib PIDFControllers - ONE FOR EACH TURRET
+    public PIDFController rightController = new PIDFController(rightKp, rightKi, rightKd, rightKf);
+    public PIDFController leftController  = new PIDFController(leftKp, leftKi, leftKd, leftKf);
 
     // Dashboard instance
     private FtcDashboard dashboard;
@@ -39,19 +49,19 @@ public class FlywheelTuningOpMode extends OpMode {
     @Override
     public void init() {
         // Map hardware
-        flywheel1 = hardwareMap.get(DcMotorEx.class, "flywheel1");
-        flywheel2 = hardwareMap.get(DcMotorEx.class, "flywheel2");
+        rightFlywheel = hardwareMap.get(DcMotorEx.class, "rightFlywheel");
+        //leftFlywheel = hardwareMap.get(DcMotorEx.class, "leftFlywheel");
 
-        flywheel1.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        flywheel2.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        flywheel1.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        flywheel2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        rightFlywheel.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        //leftFlywheel.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        //leftFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
-        flywheel1.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
-        flywheel2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
-        flywheel1.setDirection(DcMotorEx.Direction.REVERSE);
-        flywheel2.setDirection(DcMotorEx.Direction.REVERSE);
+        rightFlywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+        //leftFlywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
 
+        rightFlywheel.setDirection(DcMotorEx.Direction.REVERSE);
+        //leftFlywheel.setDirection(DcMotorEx.Direction.REVERSE);
 
         // Get the FTC Dashboard instance
         dashboard = FtcDashboard.getInstance();
@@ -62,42 +72,51 @@ public class FlywheelTuningOpMode extends OpMode {
 
     @Override
     public void loop() {
-        // Ensure the controller is updated from dashboard values
-        flywheelController.setPIDF(kP, kI, kD, kF); // We use manual feedforward logic for kF if preferred, or include it
-        // Calculate true actual RPM
+        // 1) Ensure the controllers are updated from their specific independent live dashboard values
+        rightController.setPIDF(rightKp, rightKi, rightKd, rightKf);
+        leftController.setPIDF(leftKp, leftKi, leftKd, leftKf);
+
+        // 2) Calculate true actual RPM independently using effective TPR
         double effectiveTPR = MOTOR_TICKS_PER_REV * EXTERNAL_GEAR_RATIO;
-        double ticksPerSec = (flywheel1.getVelocity() + flywheel2.getVelocity()) / 2.0;
-        double currentRPM = (flywheel1.getVelocity() * 60) / 37.333;
 
+        double rightRPM = (rightFlywheel.getVelocity() * 60.0) / effectiveTPR;
+        //double leftRPM  = (leftFlywheel.getVelocity() * 60.0)  / effectiveTPR;
 
-        // 2) PID calculation (target & k’s are expected to be updated elsewhere)
-        double pid = flywheelController.calculate(currentRPM, targetRPM);
-
+        // 3) Independent PID calculations based on shared target
+        double rightPid = rightController.calculate(rightRPM, targetRPM);
+        //double leftPid  = leftController.calculate(leftRPM, targetRPM);
 
         // 4) Apply power (clip at ±1)
-        double power = Math.max(-1, Math.min(1, pid));
-        flywheel1.setPower(power); // preserve original scaling
-        flywheel2.setPower(power); // preserve original scaling
+        double rightPower = Math.max(-1, Math.min(1, rightPid));
+        //double leftPower  = Math.max(-1, Math.min(1, leftPid));
 
+        rightFlywheel.setPower(rightPower);
+        //leftFlywheel.setPower(leftPower);
+
+        // --- Driver Station Telemetry ---
         telemetry.addData("Target RPM", targetRPM);
-        telemetry.addData("Actual RPM", currentRPM);
-        telemetry.addData("Motor Power", power);
+        telemetry.addData("Right RPM", rightRPM);
+        //telemetry.addData("Left RPM", leftRPM);
+        telemetry.addData("Right Power", rightPower);
+        //telemetry.addData("Left Power", leftPower);
         telemetry.update();
 
+        // --- FTC Dashboard Telemetry (Graphing) ---
         dashboard.getTelemetry().addData("Target RPM", targetRPM);
-        dashboard.getTelemetry().addData("Actual RPM", currentRPM);
-        dashboard.getTelemetry().addData("Motor Power", power);
-        dashboard.getTelemetry().addData("raw Motor Power", power);
-        dashboard.getTelemetry().addData("1 Motor vel", flywheel1.getVelocity());
-        dashboard.getTelemetry().addData("2 Motor vel", flywheel2.getVelocity());
-        dashboard.getTelemetry().addData("RPM flywheel 1", ((flywheel1.getVelocity() * 60) / 37.333));
-        dashboard.getTelemetry().addData("RPM flywheel 2", ((flywheel2.getVelocity() * 60) / 37.333));
+        dashboard.getTelemetry().addData("Right RPM", rightRPM);
+        //dashboard.getTelemetry().addData("Left RPM", leftRPM);
+
+        dashboard.getTelemetry().addData("Right Power", rightPower);
+        //dashboard.getTelemetry().addData("Left Power", leftPower);
+
+        dashboard.getTelemetry().addData("Raw Right Vel", rightFlywheel.getVelocity());
+        //dashboard.getTelemetry().addData("Raw Left Vel", leftFlywheel.getVelocity());
         dashboard.getTelemetry().update();
     }
 
     @Override
     public void stop() {
-        flywheel1.setPower(0.0);
-        flywheel2.setPower(0.0);
+        rightFlywheel.setPower(0.0);
+        //leftFlywheel.setPower(0.0);
     }
 }

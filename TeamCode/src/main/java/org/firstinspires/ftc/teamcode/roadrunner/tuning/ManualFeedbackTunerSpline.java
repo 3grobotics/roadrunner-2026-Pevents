@@ -17,7 +17,7 @@ public final class ManualFeedbackTunerSpline extends LinearOpMode {
     @Override
     public void runOpMode() throws InterruptedException {
         if (TuningOpModes.DRIVE_CLASS.equals(MecanumDrive.class)) {
-            MecanumDrive drive = new MecanumDrive(hardwareMap, new Pose2d(0, 0, 0));
+            MecanumDrive drive = new MecanumDrive(hardwareMap, new Pose2d(-37, 40, Math.toRadians(90)));
             
             if (drive.localizer instanceof TwoDeadWheelLocalizer) {
                 if (TwoDeadWheelLocalizer.PARAMS.perpXTicks == 0 && TwoDeadWheelLocalizer.PARAMS.parYTicks == 0) {
@@ -32,16 +32,23 @@ public final class ManualFeedbackTunerSpline extends LinearOpMode {
 
             while (opModeIsActive()) {
                 Actions.runBlocking(
-                    drive.actionBuilder(new Pose2d(0, 0, 0))
-                            .splineTo(new Vector2d(30, 30), Math.PI / 2)
-                            .splineTo(new Vector2d(0, 60), Math.PI)
+                        // 1. Face Down (270) and Travel Down (270)
+                        drive.actionBuilder(new Pose2d(-37, 40, Math.toRadians(270)))
+                                .setTangent(Math.toRadians(270))
+                                .splineToLinearHeading(new Pose2d(-37, 0, Math.toRadians(270)), Math.toRadians(270))
 
-                            .setTangent(Math.toRadians(0))
-                            .splineToSplineHeading(new Pose2d(30, 30, Math.toRadians(270)), Math.toRadians(270))
-                            .splineToLinearHeading(new Pose2d(0, 0, Math.toRadians(0)), Math.toRadians(180))
-                            /*.lineToX(DISTANCE)
-                            .lineToX(0)*/
-                            .build());
+                                // 2. Face Right (0) and Travel Right (0)
+                                .setTangent(Math.toRadians(0))
+                                .splineToLinearHeading(new Pose2d(37, 0, Math.toRadians(0)), Math.toRadians(0))
+
+                                // 3. Face Down (270) and Travel Down (270)
+                                .setTangent(Math.toRadians(270))
+                                .splineToLinearHeading(new Pose2d(37, -45, Math.toRadians(270)), Math.toRadians(270))
+
+                                // 4. Face Left (180) and Travel Left (180)
+                                .setTangent(Math.toRadians(180))
+                                .splineToLinearHeading(new Pose2d(-37, -40, Math.toRadians(180)), Math.toRadians(180))
+                                .build());
             }
         } else if (TuningOpModes.DRIVE_CLASS.equals(TankDrive.class)) {
             TankDrive drive = new TankDrive(hardwareMap, new Pose2d(0, 0, 0));
