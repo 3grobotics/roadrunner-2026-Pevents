@@ -19,14 +19,19 @@ public class tuninglinearequations extends LinearOpMode {
 
     // --- Hardware Components (Matching mainTestingTeleop) ---
     Servo turret1, turret2;
-    private DcMotorEx leftIntake;
-    private DcMotorEx rightIntake;
-    private DcMotorEx rightFlywheel;
-    private DcMotorEx gecko; // Used as indexer
-
+    DcMotorEx             frontLeft     ;
+    DcMotorEx             backLeft      ;
+    DcMotorEx             topIntake     ;
+    DcMotorEx             middleIntake  ;
+    DcMotorEx             bottomIntake  ;
+    DcMotorEx             leftFlywheel  ;
+    DcMotorEx             rightFlywheel ;
+    Servo                 gate          ;
+    Servo                 arm           ;
+    Servo                 claw          ;
     // --- Hardware Constants ---
     public static double MOTOR_TICKS_PER_REV = 28.0;
-    public static double EXTERNAL_GEAR_RATIO = 1;
+    public static double EXTERNAL_GEAR_RATIO = 1.333333;
 
     // --- FTC Dashboard Live Variables ---
     public double kP = 0.001;
@@ -60,27 +65,40 @@ public class tuninglinearequations extends LinearOpMode {
         turret1 = hardwareMap.get(Servo.class, "turret1");
         turret2 = hardwareMap.get(Servo.class, "turret2");
 
-        leftIntake = hardwareMap.get(DcMotorEx.class, "leftIntake");
-        rightIntake = hardwareMap.get(DcMotorEx.class, "rightIntake");
-        rightFlywheel = hardwareMap.get(DcMotorEx.class, "rightFlywheel");
-        gecko = hardwareMap.get(DcMotorEx.class, "gecko");
+        arm = hardwareMap.get(Servo.class, "arm");
+
+        claw = hardwareMap.get(Servo.class, "claw");
+
+
+
+        topIntake    = hardwareMap.get(DcMotorEx.class,  "topIntake");
+
+        middleIntake   = hardwareMap.get(DcMotorEx.class,  "middleIntake");
+
+        bottomIntake   = hardwareMap.get(DcMotorEx.class,  "bottomIntake");
+
+
+        rightFlywheel = hardwareMap.get(DcMotorEx.class,  "rightFlywheel");
+        //leftFlywheel  = hardwareMap.get(DcMotorEx.class,  "leftFlywheel");
+        gate = hardwareMap.get(Servo.class,  "gate");
 
         // --- Servo & Motor Configurations ---
         turret1.setDirection(Servo.Direction.REVERSE);
         turret2.setDirection(Servo.Direction.REVERSE);
 
         rightFlywheel.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        rightFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        rightFlywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
-        rightFlywheel.setDirection(DcMotorEx.Direction.REVERSE);
 
-        leftIntake.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        rightIntake.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        gecko.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        rightFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        rightFlywheel.setDirection(DcMotor.Direction.REVERSE);
+        rightFlywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+
+
 
         dashboard = FtcDashboard.getInstance();
 
         double spt = 0.5;
+        double clawPos = 1;
+        double armPos = .5;
         double v = 0;
         double target_y = 0;
         double target_x = 0;
@@ -89,6 +107,10 @@ public class tuninglinearequations extends LinearOpMode {
         boolean prevrr = false;
         boolean prevaa = false;
         boolean prevyy = false;
+        boolean prevbb = false;
+        boolean prevxx = false;
+        boolean prevsX = false;
+        boolean prevsB = false;
 
 
 
@@ -142,6 +164,40 @@ public class tuninglinearequations extends LinearOpMode {
                 turret2.setPosition(spt);
             }
 
+            /* arm and claw*/ {
+                boolean xx = gamepad1.x;
+                boolean bb = gamepad1.b;
+
+                if (xx && !prevxx && !bb) {
+                    armPos = Range.clip(armPos - 0.01, 0, 1);
+                }
+                if (bb && !prevbb && !xx) {
+                    armPos = Range.clip(armPos + 0.01, 0, 1);
+                }
+
+                prevxx = xx;
+                prevbb = bb;
+
+                arm.setPosition(armPos);
+
+
+                boolean sX = gamepad1.dpad_up;
+                boolean sB = gamepad1.dpad_down;
+
+
+                if (sX && !prevsX && !sB) {
+                    clawPos = Range.clip(clawPos - 0.01, 0, 1);
+                }
+                if (sB && !prevsB && !sX) {
+                    clawPos = Range.clip(clawPos + 0.01, 0, 1);
+                }
+
+                prevsX = sX;
+                prevsB = sB;
+
+                claw.setPosition(clawPos);
+            }
+
             // --- Flywheel PIDF Control ---
             {
                 boolean aa = gamepad1.a;
@@ -158,7 +214,9 @@ public class tuninglinearequations extends LinearOpMode {
                 prevyy = yy;
 
                 flywheelController.setPIDF(kP, kI, kD, kF);
-                double currentRPM = (rightFlywheel.getVelocity() * 60) / 28;
+                double effectiveTPR = MOTOR_TICKS_PER_REV * EXTERNAL_GEAR_RATIO;
+
+                double currentRPM = (rightFlywheel.getVelocity() * 60) / effectiveTPR;
                 double pid = flywheelController.calculate(currentRPM, v);
                 double power = Math.max(-1, Math.min(1, pid));
                 rightFlywheel.setPower(power);
@@ -169,48 +227,19 @@ public class tuninglinearequations extends LinearOpMode {
 
                 double intakeCmd = (gamepad1.right_trigger + gamepad2.right_trigger) - (gamepad1.left_trigger + gamepad2.left_trigger);
                 if (gamepad1.left_bumper || gamepad2.left_bumper) {
-                    intakeCmd = -1;
+                    intakeCmd = -1.0;
                 } else if (gamepad1.right_bumper || gamepad2.right_bumper) {
-                    intakeCmd = 1;
+                    intakeCmd = 1.0;
                 }
 
-                fireIntakeCmd = ((Range.scale(intakeCmd, -1.0, 1.0, -3000, 3000) * 56) / 60);
+                topIntake.setPower(intakeCmd);
+                middleIntake.setPower(intakeCmd);
+                bottomIntake.setPower(intakeCmd);
 
-                if (!gamepad1.left_bumper && !gamepad2.left_bumper && !gamepad1.right_bumper && !gamepad2.right_bumper) {
-                    leftIntake.setVelocity (((Range.scale(intakeCmd, -1.0, 1.0, -3000, 3000) * 56) / 60));
-                    rightIntake.setVelocity(((Range.scale(intakeCmd, -1.0, 1.0, -3000, 3000) * 56) / 60));
-                } else if (gamepad1.left_bumper || gamepad2.left_bumper || gamepad1.right_bumper || gamepad2.right_bumper) {
-                    leftIntake.setVelocity (((/*fireIntakeCmd + iv*/ 900) * 56) / 60);
-                    rightIntake.setVelocity(((/*fireIntakeCmd + iv*/ 900) * 56) / 60);
-                }
-
-
-
-                /*leftIntake.setPower (Range.clip(intakeCmd, -.5912, .5912));
-                rightIntake.setPower(Range.clip(intakeCmd, -.5912, .5912));*/
-
-                /*leftIntake .setPower(intakeCmd);
-                rightIntake.setPower(intakeCmd);*/
-
-
-
-
-                triggerPressed = gamepad1.right_trigger >= 0.001;
-
-
-                if (intakeTimer.seconds() < 0.5) {
-                    gecko.setPower(-1);
+                if (gamepad1.right_bumper || gamepad2.right_bumper) {
+                    gate.setPosition(.5);
                 } else {
-                    if (intakeCmd != 0) {
-                        gecko.setPower(-(gamepad1.left_bumper || gamepad1.right_bumper ? -1.0 : 1.0));
-                    } else {
-                        gecko.setPower(0);
-                    }
-
-                }
-
-                if (triggerPressed) {
-                    intakeTimer.reset();
+                    gate.setPosition(.6);
                 }
 
             }
@@ -248,12 +277,14 @@ public class tuninglinearequations extends LinearOpMode {
             double xl = target_x - pip.getPosX(DistanceUnit.INCH);
             double yl = target_y - pip.getPosY(DistanceUnit.INCH);
             double hypot = Math.sqrt((xl * xl) + (yl * yl));
-            double currentRPM = (rightFlywheel.getVelocity() * 60) / 28;
+            double currentRPM = (rightFlywheel.getVelocity() * 60) / (MOTOR_TICKS_PER_REV * EXTERNAL_GEAR_RATIO);
 
             // --- Telemetry ---
             telemetry.addData("tilt state", currentTiltState);
             telemetry.addData("hypot", hypot);
             telemetry.addData("servo pos turret", spt);
+            telemetry.addData("armPos" , armPos);
+            telemetry.addData("clawPos", clawPos);
             telemetry.addData("target vels", v);
             telemetry.addData("RPM flywheel right", "%.3f", currentRPM);
             telemetry.addData("pip x in", pip.getPosX(DistanceUnit.INCH));

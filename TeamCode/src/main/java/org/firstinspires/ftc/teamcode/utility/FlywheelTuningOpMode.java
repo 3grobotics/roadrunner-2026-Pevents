@@ -18,7 +18,7 @@ public class FlywheelTuningOpMode extends OpMode {
 
     // --- Hardware Constants ---
     public static double MOTOR_TICKS_PER_REV = 28.0;
-    public static double EXTERNAL_GEAR_RATIO = 1;
+    public static double EXTERNAL_GEAR_RATIO = 1.333333;
 
     //-------------------------------------------------------------------------
     // FTC Dashboard Live Variables

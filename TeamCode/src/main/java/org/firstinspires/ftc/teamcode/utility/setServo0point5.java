@@ -9,7 +9,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 //@Disabled
 public class setServo0point5 extends LinearOpMode {
 
-    Servo h, t1, t2, s;
+    Servo h, t1, t2, s,flower;
 
 
     @Override
@@ -17,6 +17,7 @@ public class setServo0point5 extends LinearOpMode {
 
         t1 = hardwareMap.get(Servo.class,"turret1");
         t2 = hardwareMap.get(Servo.class,"turret2");
+        flower = hardwareMap.get(Servo.class,"flower");
         //h = hardwareMap.get(Servo.class,"hood");
         //s = hardwareMap.get(Servo.class,"swingArm");
         //h.setDirection(Servo.Direction.REVERSE);
@@ -28,6 +29,7 @@ public class setServo0point5 extends LinearOpMode {
         waitForStart();
 
         while (opModeIsActive()) {
+        flower.setPosition(.5);
         t1.setPosition(0.5);
         t2.setPosition(0.5);
         //h.setPosition(0.5);

@@ -37,13 +37,17 @@ public class mainTestingTeleop extends LinearOpMode {
     DcMotorEx             backRight     ;
     DcMotorEx             frontLeft     ;
     DcMotorEx             backLeft      ;
-    DcMotorEx             leftIntake    ;
+    DcMotorEx             topIntake     ;
+    DcMotorEx             middleIntake  ;
+    DcMotorEx             bottomIntake  ;
     DcMotorEx             leftFlywheel  ;
-    DcMotorEx             rightIntake   ;
     DcMotorEx             rightFlywheel ;
-    DcMotorEx             gecko         ;
     Servo                 turret1       ;
     Servo                 turret2       ;
+    Servo                 gate          ;
+    Servo                 flower        ;
+    Servo                 arm           ;
+    Servo                 claw          ;
     GoBildaPinpointDriver pip           ;
 
 
@@ -88,7 +92,7 @@ public class mainTestingTeleop extends LinearOpMode {
     double tiltedTx = -18; // Target X
     double tiltedTy = 13;  // Target Y
 
-    double samOffset = 5;
+    double samOffset = 0;
 
     double robotX;
     double robotY;
@@ -111,6 +115,8 @@ public class mainTestingTeleop extends LinearOpMode {
     boolean down;
     double fireIntakeCmd;
 
+    boolean flowerDown;
+
     int tiltState   = 0;
 
     boolean tPressed = false;
@@ -124,6 +130,10 @@ public class mainTestingTeleop extends LinearOpMode {
 
     public flywheelSub fly;
     public varSub v;
+    boolean bPressed = false;
+    int armState = 0;
+    boolean aPressed = false;
+    int grabState = 0;
     @Override
     public void runOpMode() {
 
@@ -140,12 +150,17 @@ public class mainTestingTeleop extends LinearOpMode {
         backLeft   = hardwareMap.get(DcMotorEx.class,  "backLeft");
         frontLeft  = hardwareMap.get(DcMotorEx.class,  "frontLeft");
 
-        leftIntake    = hardwareMap.get(DcMotorEx.class,  "leftIntake");
-        //leftFlywheel  = hardwareMap.get(DcMotorEx.class,  "leftFlywheel");
-        rightIntake   = hardwareMap.get(DcMotorEx.class,  "rightIntake");
-        rightFlywheel = hardwareMap.get(DcMotorEx.class,  "rightFlywheel");
+        topIntake    = hardwareMap.get(DcMotorEx.class,  "topIntake");
 
-        gecko = hardwareMap.get(DcMotorEx.class,  "gecko");
+        middleIntake   = hardwareMap.get(DcMotorEx.class,  "middleIntake");
+
+        bottomIntake   = hardwareMap.get(DcMotorEx.class,  "bottomIntake");
+
+
+        rightFlywheel = hardwareMap.get(DcMotorEx.class,  "rightFlywheel");
+        //leftFlywheel  = hardwareMap.get(DcMotorEx.class,  "leftFlywheel");
+        gate = hardwareMap.get(Servo.class,  "gate");
+        flower = hardwareMap.get(Servo.class,  "flower");
 
         pip = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
 
@@ -155,12 +170,17 @@ public class mainTestingTeleop extends LinearOpMode {
         turret1.setDirection(Servo.Direction.REVERSE);
         turret2.setDirection(Servo.Direction.REVERSE);
 
+        arm = hardwareMap.get(Servo.class, "arm");
+        claw = hardwareMap.get(Servo.class, "claw");
+
 
 
         frontRight.setDirection(DcMotorSimple.Direction.REVERSE);
         backRight.setDirection (DcMotorSimple.Direction.REVERSE);
         frontLeft.setDirection (DcMotorSimple.Direction.FORWARD);
         backLeft.setDirection  (DcMotorSimple.Direction.FORWARD);
+
+        rightFlywheel.setDirection  (DcMotorSimple.Direction.REVERSE);
 
         frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         backRight.setZeroPowerBehavior (DcMotor.ZeroPowerBehavior.BRAKE);
@@ -201,33 +221,78 @@ public class mainTestingTeleop extends LinearOpMode {
             } else if (gamepad1.dpad_down) {
                 pip.resetPosAndIMU();
             } else if (gamepad1.dpad_left) {
-                pip.setPosition(new Pose2D(DistanceUnit.INCH, 66, 66, AngleUnit.DEGREES, 90));
+                pip.setPosition(new Pose2D(DistanceUnit.INCH, -9.3, 65.5, AngleUnit.DEGREES, 270));
             }
 
             robotX = pip.getPosX(DistanceUnit.INCH);
             robotY = pip.getPosY(DistanceUnit.INCH);
 
 
-            if (gamepad1.touchpad && !tPressed) {
-                tiltState = (tiltState + 1) % 2;
-                tPressed = true;
-            } else if (!gamepad1.touchpad) {
-                tPressed = false;
-            }
 
-            switch (tiltState){
-                case 0:
-                    xl = tx - robotX;
-                    yl = ty - robotY;
-                    break;
-                case 1:
-                    xl = tiltedTx - robotX;
-                    yl = tiltedTy - robotY;
-                    break;
+            if(robotX > 0){
+                xl = tx - robotX;
+                yl = ty - robotY;
+            } else{
+                xl = tiltedTx - robotX;
+                yl = tiltedTy - robotY;
             }
 
             hypot = Math.sqrt((xl * xl) + (yl * yl));
 
+
+            /* Arm*/
+
+                if (gamepad1.b && !bPressed) {
+                    armState = (armState + 1) % 5;
+                    bPressed = true;
+                } else if (!gamepad1.b) {
+                    bPressed = false;
+                }
+                switch (armState){
+                    case 0:
+                        // drive around
+                        arm.setPosition(.44);
+                        break;
+                    case 1:
+                        // ready to pick up
+                        if (gamepad1.a && !aPressed) {
+                            grabState = (grabState + 1) % 2;
+                            aPressed = true;
+                        } else if (!gamepad1.a) {
+                            aPressed = false;
+                        }
+                        switch (grabState){
+                            case 0:
+                                arm.setPosition(.59);
+                                break;
+                            case 1:
+                                arm.setPosition(.6);
+                                break;
+                        }
+                        break;
+                    case 2:
+                        // grab
+
+                        if (arm.getPosition() == .59){
+                            claw.setPosition(.75);
+                        } else {
+                            claw.setPosition(.69);
+                        }
+
+                        break;
+                    case 3:
+                        // extend
+
+                        arm.setPosition(.22);
+                        break;
+                    case 4:
+                        // let go
+
+                        claw.setPosition(.99);
+
+                        break;
+
+                }
 
 
             /* turret stuff*/ {
@@ -267,14 +332,23 @@ public class mainTestingTeleop extends LinearOpMode {
                 if (gamepad1.ps || gamepad2.ps) {
                     turret1.setPosition(.5);
                     turret2.setPosition(.5);
-                } else {
+                }
+                /*else if(true) {
+                    turret1.setPosition(.35);
+                    turret2.setPosition(.35);
+                }*/
+                    else {
                     turret1.setPosition(finalServoDegrees / 543.636);
                     turret2.setPosition(finalServoDegrees / 543.636);
                 }
             }
+            
+
 
 
             /* intake stuff */ {
+
+
                 up = gamepad1.dpad_up;
                 down = gamepad1.dpad_down;
 
@@ -292,65 +366,42 @@ public class mainTestingTeleop extends LinearOpMode {
 
                 double intakeCmd = (gamepad1.right_trigger + gamepad2.right_trigger) - (gamepad1.left_trigger + gamepad2.left_trigger);
                 if (gamepad1.left_bumper || gamepad2.left_bumper) {
-                    intakeCmd = -1;
+                    intakeCmd = -1.0;
                 } else if (gamepad1.right_bumper || gamepad2.right_bumper) {
                     intakeCmd = 1;
                 }
 
-                fireIntakeCmd = ((Range.scale(intakeCmd, -1.0, 1.0, -3000, 3000) * 56) / 60);
+                topIntake.setPower(intakeCmd);
+                middleIntake.setPower(intakeCmd);
+                bottomIntake.setPower(intakeCmd);
 
-                if (!gamepad1.left_bumper && !gamepad2.left_bumper && !gamepad1.right_bumper && !gamepad2.right_bumper) {
-                    leftIntake.setVelocity (((Range.scale(intakeCmd, -1.0, 1.0, -3000, 3000) * 56) / 60));
-                    rightIntake.setVelocity(((Range.scale(intakeCmd, -1.0, 1.0, -3000, 3000) * 56) / 60));
-                } else if (gamepad1.left_bumper || gamepad2.left_bumper || gamepad1.right_bumper || gamepad2.right_bumper) {
-                    leftIntake.setVelocity (((/*fireIntakeCmd + iv*/ 900) * 56) / 60);
-                    rightIntake.setVelocity(((/*fireIntakeCmd + iv*/ 900) * 56) / 60);
-                }
-
-
-                /*leftIntake.setPower (Range.clip(intakeCmd, -.5912, .5912));
-                rightIntake.setPower(Range.clip(intakeCmd, -.5912, .5912));*/
-
-                /*leftIntake .setPower(intakeCmd);
-                rightIntake.setPower(intakeCmd);*/
-
-
-
-
-                triggerPressed = gamepad1.right_trigger >= 0.001;
-
-
-                if (intakeTimer.seconds() < 0.5) {
-                    gecko.setPower(-1);
+                if (gamepad1.right_bumper || gamepad2.right_bumper) {
+                    gate.setPosition(.5);
                 } else {
-                    if (intakeCmd != 0) {
-                        gecko.setPower(-(gamepad1.left_bumper || gamepad1.right_bumper ? -1.0 : 1.0));
-                    } else {
-                        gecko.setPower(0);
-                    }
-
+                    gate.setPosition(.6);
                 }
 
-                if (triggerPressed) {
-                    intakeTimer.reset();
-                }
+                flowerDown = atFlower(robotX, robotY, pip.getHeading(AngleUnit.DEGREES));
+                flower.setPosition(flowerDown ? 0 : 0.5);
+
+
 
             }
 
             /*flywheels*/
-                // Flywheel Update
-                fly.hypot = hypot;
-                fly.voltage = currentVoltage;
-                fly.up = gamepad1.b;
-                fly.down = gamepad1.a;
+            // Flywheel Update
+            fly.hypot = hypot;
+            fly.voltage = currentVoltage;
+            //fly.up = gamepad1.b ;
+            //fly.down = gamepad1.a;
 
-                if (gamepad1.x) v.var = 1;
-                else if (gamepad1.y) v.var = 0;
+            if (gamepad1.x) v.var = 1;
+            else if (gamepad1.y) v.var = 0;
 
-                if (v.var == 1) fly.runFlywheel();
-                else fly.power0();
+            if (v.var == 1) fly.runFlywheel();
+            else fly.power0();
 
-                fly.loop();
+            fly.loop();
 
 
 
@@ -372,52 +423,78 @@ public class mainTestingTeleop extends LinearOpMode {
             }
 
             /*bad apple*/{
-            if (currentFrame >= BadAppleData.FRAMES.length) {
-                currentFrame = 0; // Loop the video
-            }
-
-            if (frameTimer.milliseconds() >= FRAME_TIME_MS) {
-                frameTimer.reset();
-                display.clear();
-
-                // Decode the current frame from Base64 back into raw bytes
-                byte[] frameData = Base64.decode(BadAppleData.FRAMES[currentFrame], Base64.DEFAULT);
-                int bitIndex = 0;
-
-                for (int y = 0; y < VIDEO_HEIGHT; y++) {
-                    for (int x = 0; x < VIDEO_WIDTH; x++) {
-                        int bytePos = bitIndex / 8;
-                        int bitPos = 7 - (bitIndex % 8);
-                        boolean isWhite = ((frameData[bytePos] >> bitPos) & 1) == 1;
-
-                        if (isWhite) {
-                            display.setPixel(x, (VIDEO_HEIGHT - 1 - y));
-                        }
-                        bitIndex++;
-                    }
+                if (currentFrame >= BadAppleData.FRAMES.length) {
+                    currentFrame = 0; // Loop the video
                 }
 
-                // MOVED: Only advance the frame if the timer has triggered
-                currentFrame++;
-            }
+                if (frameTimer.milliseconds() >= FRAME_TIME_MS) {
+                    frameTimer.reset();
+                    display.clear();
 
-            telemetry.addLine(display.renderHtml());
-            telemetry.addData("hypot", hypot);
-            //telemetry.addData("actual", gate.getPosition());
-            telemetry.addData("wanted rpm ", vTarget);
-            //telemetry.addData("actual rpm left flywheel", ((leftFlywheel.getVelocity() * 60 ) / 28));
-            telemetry.addData("actual rpm right flywheel", (fly.getRotation(MeasureUnit.REVOLUTIONS, TimeScale.MINUTES, FlywheelSide.RIGHT)));
-            telemetry.addData("time", (intakeTimer.seconds()));
-            telemetry.addData("power", rightIntake.getPower());
-            telemetry.addData("intake velocity", (rightIntake.getVelocity() * 60 ) / 28);
-            telemetry.addData("i v", (iv));
+                    // Decode the current frame from Base64 back into raw bytes
+                    byte[] frameData = Base64.decode(BadAppleData.FRAMES[currentFrame], Base64.DEFAULT);
+                    int bitIndex = 0;
 
-            telemetry.update();
-            pip.update();
+                    for (int y = 0; y < VIDEO_HEIGHT; y++) {
+                        for (int x = 0; x < VIDEO_WIDTH; x++) {
+                            int bytePos = bitIndex / 8;
+                            int bitPos = 7 - (bitIndex % 8);
+                            boolean isWhite = ((frameData[bytePos] >> bitPos) & 1) == 1;
+
+                            if (isWhite) {
+                                display.setPixel(x, (VIDEO_HEIGHT - 1 - y));
+                            }
+                            bitIndex++;
+                        }
+                    }
+
+                    // MOVED: Only advance the frame if the timer has triggered
+                    currentFrame++;
+                }
+
+                telemetry.addLine(display.renderHtml());
+                telemetry.addData("hypot", hypot);
+
+                telemetry.addData("x", pip.getPosX(DistanceUnit.INCH));
+
+                telemetry.addData("y", pip.getPosY(DistanceUnit.INCH));
+                //telemetry.addData("actual", gate.getPosition());
+                telemetry.addData("wanted rpm ", vTarget);
+                telemetry.addData("turret position", turret1.getPosition());
+                //telemetry.addData("actual rpm left flywheel", ((leftFlywheel.getVelocity() * 60 ) / 28));
+                telemetry.addData("actual rpm right flywheel", (fly.getRotation(MeasureUnit.REVOLUTIONS, TimeScale.MINUTES, FlywheelSide.RIGHT)));
+                telemetry.addData("time", (intakeTimer.seconds()));
+                telemetry.addData("power", middleIntake.getPower());
+                telemetry.addData("angle to goal", angleToGoal);
+                telemetry.addData("heading", robotHeading);
+                telemetry.update();
+                pip.update();
             }
         }
 
     }
+    // ---- class level ----
+    private static final double FLOWER_DIST  = 68.0;  // flower distance from field center, toward its wall
+    private static final double FLOWER_SLIDE = 23.4;  // flower offset along the wall
+    private static final double SIDE_TOL     = 4.0;   // +/- inches of sideways error allowed
+    private static final double REACH_MIN    = 40;  // robot must be past this distance toward the wall
+    private static final double HEADING_TOL  = 30.0;  // +/- degrees of heading error allowed
+    private static final double[] FACING     = {0, 90, 180, 270};  // right, top, left, bottom
+
+    private boolean atFlower(double x, double y, double headingDeg) {
+        for (double f : FACING) {
+            double r = Math.toRadians(f), c = Math.cos(r), s = Math.sin(r);
+            double u =  x * c + y * s;   // distance toward this flower's wall
+            double v = -x * s + y * c;   // sideways position along that wall
+            double err = Math.abs(((headingDeg - f) % 360 + 540) % 360 - 180);
+            if (u > REACH_MIN && Math.abs(v - FLOWER_SLIDE) < SIDE_TOL && err < HEADING_TOL) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+
     public static class Renderer {
         private final int width;
         private final int height;

@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.Subsystems;
 
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.util.Range;
 import com.seattlesolvers.solverslib.controller.PIDFController;
@@ -23,7 +24,7 @@ public class flywheelSub {
     // --- Flywheel Hardware & Measurement Variables ---
     public static double WHEEL_DIAMETER_INCHES = 2.834646;
     public static double MOTOR_TICKS_PER_REV = 28.0;     // Bare goBILDA motor without gearbox
-    public static double EXTERNAL_GEAR_RATIO = 1;
+    public static double EXTERNAL_GEAR_RATIO = 1.333333;
 
     // --- Target & Distance Variables ---
     public volatile double rightTarget = 0;
@@ -39,10 +40,10 @@ public class flywheelSub {
     //private final DcMotorEx leftFlywheel;
 
     // Right Turret PIDF Gains
-    public static double rightKp = 0.001;
+    public static double rightKp = 0.0007;
     public static double rightKi = 0.0001;
-    public static double rightKd = 0.00001;
-    public static double rightKf = 0.000195;
+    public static double rightKd = 0;
+    public static double rightKf = 0.00026;
 
     // Left Turret PIDF Gains
     public static double leftKp = .00033;
@@ -88,14 +89,12 @@ public class flywheelSub {
         // 1) Calculate base target RPM based on distance
         double baseTarget = 0;
 
-        if (hypot <= 29) {
-            baseTarget = 24.59 * hypot + 2279.512;
-        } else if (hypot > 29 && hypot <= 39) {
-            baseTarget = 3000;
-        } else if (hypot > 39 && hypot <= 44) {
-            baseTarget = 9.615 * hypot + 2625.015;
-        } else if (hypot > 44) {
-            baseTarget = 15.625 * hypot + 2359.375;
+        if (hypot <= 38.8) {
+            baseTarget =  5.682 * hypot + 2179.54;
+        } else if (hypot > 38.8 && hypot <= 44.6) {
+            baseTarget =  8.621 * hypot + 2065.505;
+        }else if (hypot > 44.6) {
+            baseTarget = 13.636 * hypot + 1841.834;
         }
 
         baseTarget = Range.clip(baseTarget, 0, 6000);

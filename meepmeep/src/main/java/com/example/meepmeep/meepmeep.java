@@ -23,22 +23,43 @@ public class meepmeep {
 
         myBot.runAction(myBot.getDrive().actionBuilder(initialPose)
 
+                .waitSeconds(4)
+                // flywheel up
+                //fire
+                //intake off
+
+                //intake and flowerdown in the middle of the path
+
                 .setTangent(Math.toRadians(180))
-                .splineToLinearHeading(new Pose2d(24, -52, Math.toRadians(180)), Math.toRadians(180))
+                .splineToLinearHeading(new Pose2d(24, -52, Math.toRadians(270)), Math.toRadians(270))
 
                 .waitSeconds(1)
 
-                .setTangent(Math.toRadians(180))
+
+                // stop intake
+                // flower up in the middle of the path
+
+                .setTangent(Math.toRadians(90))
                 .splineToLinearHeading(new Pose2d(-45, -52, Math.toRadians(180)), Math.toRadians(180))
 
                 //.waitSeconds(.1)
 
+                //flower down in middle of path
+
                 .setTangent(Math.toRadians(180))
-                .splineToLinearHeading(new Pose2d(-52, -24, Math.toRadians(180)), Math.toRadians(90))
+                .splineToLinearHeading(new Pose2d(-45, -24, Math.toRadians(180)), Math.toRadians(180))
 
-                //.waitSeconds(.1)
+                .setTangent(Math.toRadians(180))
+                .splineToLinearHeading(new Pose2d(-52, -24, Math.toRadians(180)), Math.toRadians(180))
 
-                .setTangent(Math.toRadians(270))
+                //fire
+
+                .waitSeconds(1)
+
+                //stop fire
+                // flower up mid path
+
+                .setTangent(Math.toRadians(0))
                 .splineToLinearHeading(new Pose2d(-52, -57, Math.toRadians(180)), Math.toRadians(270))
 
 

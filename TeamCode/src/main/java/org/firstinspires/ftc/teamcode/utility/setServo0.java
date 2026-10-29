@@ -11,13 +11,14 @@ import com.qualcomm.robotcore.hardware.ServoImplEx;
 //@Disabled
 public class setServo0 extends LinearOpMode {
 
-    ServoImplEx h, t1, t2;
+    ServoImplEx h, t1, t2, flower;
 
     @Override
     public void runOpMode() {
 
         t1 = hardwareMap.get(ServoImplEx.class,"turret1");
         t2 = hardwareMap.get(ServoImplEx.class,"turret2");
+        flower = hardwareMap.get(ServoImplEx.class,"flower");
         //h = hardwareMap.get( ServoImplEx.class,"hood");
         //h.setDirection(Servo.Direction.REVERSE);
         t1.setDirection(Servo.Direction.REVERSE);
@@ -33,6 +34,7 @@ public class setServo0 extends LinearOpMode {
 
         t1.setPosition(0.0);
         t2.setPosition(0.0);
+        flower.setPosition(0.0);
        // h.setPosition(0.0);
        //     telemetry.addData("hood position", h.getPosition());
             telemetry.update();
