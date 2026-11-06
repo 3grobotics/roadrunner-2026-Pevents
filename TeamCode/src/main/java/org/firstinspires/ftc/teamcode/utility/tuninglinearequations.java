@@ -65,7 +65,7 @@ public class tuninglinearequations extends LinearOpMode {
         turret1 = hardwareMap.get(Servo.class, "turret1");
         turret2 = hardwareMap.get(Servo.class, "turret2");
 
-        arm = hardwareMap.get(Servo.class, "arm");
+        //arm = hardwareMap.get(Servo.class, "arm");
 
         claw = hardwareMap.get(Servo.class, "claw");
 
@@ -164,7 +164,7 @@ public class tuninglinearequations extends LinearOpMode {
                 turret2.setPosition(spt);
             }
 
-            /* arm and claw*/ {
+            /* arm and claw {
                 boolean xx = gamepad1.x;
                 boolean bb = gamepad1.b;
 
@@ -197,6 +197,8 @@ public class tuninglinearequations extends LinearOpMode {
 
                 claw.setPosition(clawPos);
             }
+            */
+             
 
             // --- Flywheel PIDF Control ---
             {

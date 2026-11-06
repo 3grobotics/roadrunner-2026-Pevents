@@ -33,7 +33,7 @@ public class flywheelSub {
 
     // Offsets
     public double voltageOffset = 0;
-    public double manualOffsetRight = 0;
+    public double manualOffsetRight = 80;
     public double manualOffsetLeft = 0;
 
     private final DcMotorEx rightFlywheel;
@@ -124,7 +124,7 @@ public class flywheelSub {
         voltageOffset = -230.769 * Range.clip(voltage, 0, 12.2) + 2715.382;
 
         // 4) Assign final specific targets in ONE atomic step
-        rightTarget = baseTarget /* + voltageOffset*/ + manualOffsetRight;
+        rightTarget = baseTarget /* + voltageOffset*/ - manualOffsetRight;
         //leftTarget = baseTarget + voltageOffset + manualOffsetLeft;
 
         // 5) Read sensors independently

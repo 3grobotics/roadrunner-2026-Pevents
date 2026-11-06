@@ -11,11 +11,11 @@ import com.noahbres.meepmeep.roadrunner.entity.RoadRunnerBotEntity;
 public class meepmeep {
     public static void main(String[] args) {
         MeepMeep meepMeep = new MeepMeep(700);
-        Pose2d initialPose = new Pose2d(62, -39, Math.toRadians(180));
+        Pose2d initialPose = new Pose2d(62, -16, Math.toRadians(270));
         RoadRunnerBotEntity myBot = new DefaultBotBuilder(meepMeep)
                 // Set bot constraints: maxVel, maxAccel, maxAngVel, maxAngAccel, track width
                 .setConstraints(60, 60, Math.toRadians(180), Math.toRadians(180), 16)
-                .setDimensions(16, 16)
+                .setDimensions(17.5, 16)
 
                 .setStartPose(initialPose)
                 .setDriveTrainType(DriveTrainType.MECANUM)
@@ -23,44 +23,64 @@ public class meepmeep {
 
         myBot.runAction(myBot.getDrive().actionBuilder(initialPose)
 
-                .waitSeconds(4)
-                // flywheel up
-                //fire
-                //intake off
+                .setTangent(Math.toRadians(225))
+                .splineToLinearHeading(new Pose2d(55, -37, Math.toRadians(270)), Math.toRadians(270))
+                .setTangent(Math.toRadians(270))
+                .splineToSplineHeading(new Pose2d(55, -60, Math.toRadians(0)), Math.toRadians(315))
 
-                //intake and flowerdown in the middle of the path
+
+
+                .setTangent(Math.toRadians(315))
+                .splineToLinearHeading(new Pose2d(61, -62, Math.toRadians(0)), Math.toRadians(0))
+                .setTangent(Math.toRadians(180))
+                .splineToLinearHeading(new Pose2d(57, -62, Math.toRadians(0)), Math.toRadians(180))
+                .setTangent(Math.toRadians(0))
+                .splineToLinearHeading(new Pose2d(61, -62, Math.toRadians(0)), Math.toRadians(0))
 
                 .setTangent(Math.toRadians(180))
-                .splineToLinearHeading(new Pose2d(24, -52, Math.toRadians(270)), Math.toRadians(270))
-
-                .waitSeconds(1)
-
-
-                // stop intake
-                // flower up in the middle of the path
+                .splineToLinearHeading(new Pose2d(57, -62, Math.toRadians(0)), Math.toRadians(180))
 
                 .setTangent(Math.toRadians(90))
-                .splineToLinearHeading(new Pose2d(-45, -52, Math.toRadians(180)), Math.toRadians(180))
+                .splineToLinearHeading(new Pose2d(62, -16, Math.toRadians(180)), Math.toRadians(0))
 
-                //.waitSeconds(.1)
-
-                //flower down in middle of path
-
+                // success
+                .setTangent(Math.toRadians(170))
+                .splineToLinearHeading(new Pose2d(-20, -12, Math.toRadians(180)), Math.toRadians(180))
                 .setTangent(Math.toRadians(180))
-                .splineToLinearHeading(new Pose2d(-45, -24, Math.toRadians(180)), Math.toRadians(180))
-
+                .splineToSplineHeading(new Pose2d(-40, -12, Math.toRadians(180)), Math.toRadians(180))
                 .setTangent(Math.toRadians(180))
-                .splineToLinearHeading(new Pose2d(-52, -24, Math.toRadians(180)), Math.toRadians(180))
-
-                //fire
-
-                .waitSeconds(1)
-
-                //stop fire
-                // flower up mid path
+                .splineToLinearHeading(new Pose2d(-55, -24, Math.toRadians(180)), Math.toRadians(190))
 
                 .setTangent(Math.toRadians(0))
-                .splineToLinearHeading(new Pose2d(-52, -57, Math.toRadians(180)), Math.toRadians(270))
+                .splineToLinearHeading(new Pose2d(-48, -24, Math.toRadians(180)), Math.toRadians(0))
+
+                .setTangent(Math.toRadians(180))
+                .splineToLinearHeading(new Pose2d(-55, -24, Math.toRadians(180)), Math.toRadians(180))
+
+                .setTangent(Math.toRadians(0))
+                .splineToSplineHeading(new Pose2d(-48, -24, Math.toRadians(270)), Math.toRadians(0))
+
+                // SCAN
+                .setTangent(Math.toRadians(0))
+                .splineToLinearHeading(new Pose2d(-62.8, -12, Math.toRadians(0)), Math.toRadians(225))
+                // SCAN
+
+
+                .setTangent(Math.toRadians(0))
+                .splineToLinearHeading(new Pose2d(-41, -40, Math.toRadians(0)), Math.toRadians(270))
+                .setTangent(Math.toRadians(0))
+                .splineToSplineHeading(new Pose2d(22, -58, Math.toRadians(270)), Math.toRadians(280))
+                .setTangent(Math.toRadians(0))
+                .splineToLinearHeading(new Pose2d(26, -58, Math.toRadians(270)), Math.toRadians(0))
+
+
+                .setTangent(Math.toRadians(180))
+                .splineToLinearHeading(new Pose2d(24, -58, Math.toRadians(270)), Math.toRadians(180))
+
+
+
+
+                /**/
 
 
 

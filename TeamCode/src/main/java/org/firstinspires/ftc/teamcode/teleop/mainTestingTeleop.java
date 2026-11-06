@@ -48,6 +48,7 @@ public class mainTestingTeleop extends LinearOpMode {
     Servo                 flower        ;
     Servo                 arm           ;
     Servo                 claw          ;
+    Servo                 light         ;
     GoBildaPinpointDriver pip           ;
 
 
@@ -56,6 +57,7 @@ public class mainTestingTeleop extends LinearOpMode {
     private ElapsedTime frameTimer;
     private ElapsedTime intakeTimer;
     private ElapsedTime trigTimer;
+    private ElapsedTime runtime;
 
     final int VIDEO_WIDTH = 64;
     final int VIDEO_HEIGHT = 64;
@@ -123,6 +125,8 @@ public class mainTestingTeleop extends LinearOpMode {
 
     private VoltageSensor controlHubVoltageSensor;
 
+
+
     // --- NEW HUB LIST VARIABLE ---
     private List<LynxModule> allHubs;
 
@@ -161,6 +165,7 @@ public class mainTestingTeleop extends LinearOpMode {
         //leftFlywheel  = hardwareMap.get(DcMotorEx.class,  "leftFlywheel");
         gate = hardwareMap.get(Servo.class,  "gate");
         flower = hardwareMap.get(Servo.class,  "flower");
+        light = hardwareMap.get(Servo.class,  "light");
 
         pip = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
 
@@ -170,7 +175,7 @@ public class mainTestingTeleop extends LinearOpMode {
         turret1.setDirection(Servo.Direction.REVERSE);
         turret2.setDirection(Servo.Direction.REVERSE);
 
-        arm = hardwareMap.get(Servo.class, "arm");
+        //arm = hardwareMap.get(Servo.class, "arm");
         claw = hardwareMap.get(Servo.class, "claw");
 
 
@@ -197,6 +202,8 @@ public class mainTestingTeleop extends LinearOpMode {
         intakeTimer = new ElapsedTime();
         trigTimer = new ElapsedTime();
 
+        runtime = new ElapsedTime();
+
         pip.setOffsets(-105.091, -119.462, DistanceUnit.MM);
         pip.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
         pip.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.REVERSED, GoBildaPinpointDriver.EncoderDirection.FORWARD);
@@ -210,6 +217,8 @@ public class mainTestingTeleop extends LinearOpMode {
         fly = new flywheelSub(hardwareMap);
         v = new varSub();
         waitForStart();
+
+        runtime.reset();
 
 
         while (opModeIsActive()) {
@@ -239,10 +248,15 @@ public class mainTestingTeleop extends LinearOpMode {
 
             hypot = Math.sqrt((xl * xl) + (yl * yl));
 
+            // Drop this inside your active while loop:
+            double progress = 1.0 - Math.abs((runtime.seconds() % 5.0) / 2.5 - 1.0);
+            double pos = 0.277 + (0.722 - 0.277) * progress;
+            light.setPosition(pos);
+
 
             /* Arm*/
 
-                if (gamepad1.b && !bPressed) {
+                /*if (gamepad1.b && !bPressed) {
                     armState = (armState + 1) % 5;
                     bPressed = true;
                 } else if (!gamepad1.b) {
@@ -263,17 +277,17 @@ public class mainTestingTeleop extends LinearOpMode {
                         }
                         switch (grabState){
                             case 0:
-                                arm.setPosition(.59);
+                                arm.setPosition(.58);
                                 break;
                             case 1:
-                                arm.setPosition(.6);
+                                arm.setPosition(.59);
                                 break;
                         }
                         break;
                     case 2:
                         // grab
 
-                        if (arm.getPosition() == .59){
+                        if (arm.getPosition() == .58){
                             claw.setPosition(.75);
                         } else {
                             claw.setPosition(.69);
@@ -308,7 +322,7 @@ public class mainTestingTeleop extends LinearOpMode {
                     calculatedTurretRad += 2 * Math.PI;
                 }
 
-                finalServoDegrees = Math.toDegrees(calculatedTurretRad) + (543.636 / 2);
+                finalServoDegrees = Math.toDegrees(calculatedTurretRad) + (388.73743 / 2);
 
                 left = gamepad2.dpad_left;
                 right = gamepad2.dpad_right;
@@ -328,7 +342,7 @@ public class mainTestingTeleop extends LinearOpMode {
                 finalServoDegrees += samOffset;
 
                 // 5. Clamp and Set
-                finalServoDegrees = Range.clip(finalServoDegrees, 0, 543.636);
+                finalServoDegrees = Range.clip(finalServoDegrees, 0, 388.73743);
                 if (gamepad1.ps || gamepad2.ps) {
                     turret1.setPosition(.5);
                     turret2.setPosition(.5);
@@ -338,8 +352,8 @@ public class mainTestingTeleop extends LinearOpMode {
                     turret2.setPosition(.35);
                 }*/
                     else {
-                    turret1.setPosition(finalServoDegrees / 543.636);
-                    turret2.setPosition(finalServoDegrees / 543.636);
+                    turret1.setPosition(finalServoDegrees / 388.73743);
+                    turret2.setPosition(finalServoDegrees / 388.73743);
                 }
             }
             
@@ -415,11 +429,11 @@ public class mainTestingTeleop extends LinearOpMode {
                 bl = axial - lateral + yawCmd;
                 br = axial + lateral - yawCmd;
 
-                max = Math.max(1.0, Math.max(Math.abs(fl), Math.max(Math.abs(fr), Math.max(Math.abs(bl), Math.abs(br)))));
-                frontLeft.setPower(fl / max);
-                frontRight.setPower(fr / max);
-                backLeft.setPower(bl / max);
-                backRight.setPower(br / max);
+                max = Math.max(1, Math.max(Math.abs(fl), Math.max(Math.abs(fr), Math.max(Math.abs(bl), Math.abs(br)))));
+                frontLeft.setPower ((fl / max) / 1 );
+                frontRight.setPower((fr / max) / 1 );
+                backLeft.setPower  ((bl / max) / 1 );
+                backRight.setPower ((br / max) / 1 );
             }
 
             /*bad apple*/{
