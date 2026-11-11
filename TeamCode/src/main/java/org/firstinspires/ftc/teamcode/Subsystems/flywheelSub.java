@@ -33,17 +33,22 @@ public class flywheelSub {
 
     // Offsets
     public double voltageOffset = 0;
-    public double manualOffsetRight = 80;
+    public double manualOffsetRight = 0;
     public double manualOffsetLeft = 0;
 
     private final DcMotorEx rightFlywheel;
-    //private final DcMotorEx leftFlywheel;
+    private final DcMotorEx leftFlywheel;
 
     // Right Turret PIDF Gains
-    public static double rightKp = 0.0007;
-    public static double rightKi = 0.0001;
-    public static double rightKd = 0;
-    public static double rightKf = 0.00026;
+    public static double shotKp = 0.0011;
+    public static double shotKi = 0.035;
+    public static double shotKd = 0;
+    public static double shotKf = 0.00029;
+
+    public static double idleKp = 0.0006;
+    public static double idleKi = 0;
+    public static double idleKd = 0;
+    public static double idleKf = 0.000263;
 
     // Left Turret PIDF Gains
     public static double leftKp = .00033;
@@ -63,24 +68,34 @@ public class flywheelSub {
     public boolean prevUp2 = false;
     public boolean prevDown2 = false;
 
+    double effectiveTPR;
+    double currentSpeedRight;
+    double shotpid;
+    double idlepid;
+    double shotPower;
+    double idlePower;
+
+    public boolean rightBumper = false;
+    public boolean leftBumper = false;
+
     public double voltage; // OpMode must update this!
     public volatile boolean loopActive = false;
 
     // Independent PID Controllers for each flywheel
-    public PIDFController rightSpinController = new PIDFController(rightKp, rightKi, rightKd, rightKf);
-    //public PIDFController leftSpinController = new PIDFController(leftKp, leftKi, leftKd, leftKf);
+    public PIDFController shotSpinController = new PIDFController(shotKp, shotKi, shotKd, shotKf);
+    public PIDFController idleSpinController = new PIDFController(idleKp, idleKi, idleKd, idleKf);
 
     public flywheelSub(HardwareMap hardwareMap) {
         rightFlywheel = hardwareMap.get(DcMotorEx.class, "rightFlywheel");
-        //leftFlywheel = hardwareMap.get(DcMotorEx.class, "leftFlywheel");
+        leftFlywheel = hardwareMap.get(DcMotorEx.class, "leftFlywheel");
 
         rightFlywheel.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.FLOAT);
-        //leftFlywheel .setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.FLOAT);
+        leftFlywheel .setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.FLOAT);
 
         // CHECK YOUR BUILD: If these are side-by-side flywheels, one usually needs
         // to be FORWARD and the other REVERSE to feed a piece through.
         rightFlywheel.setDirection(DcMotorEx.Direction.REVERSE);
-        //leftFlywheel.setDirection(DcMotorEx.Direction.REVERSE);
+        leftFlywheel.setDirection(DcMotorEx.Direction.REVERSE);
     }
 
     public void loop() {
@@ -89,12 +104,14 @@ public class flywheelSub {
         // 1) Calculate base target RPM based on distance
         double baseTarget = 0;
 
-        if (hypot <= 38.8) {
-            baseTarget =  5.682 * hypot + 2179.54;
-        } else if (hypot > 38.8 && hypot <= 44.6) {
-            baseTarget =  8.621 * hypot + 2065.505;
-        }else if (hypot > 44.6) {
-            baseTarget = 13.636 * hypot + 1841.834;
+        if (hypot <= 46.7) {
+            baseTarget =  7.042 * hypot + 2021.137;
+        } else if (hypot > 46.7 && hypot <= 53.9) {
+            baseTarget =  2350;
+        } else if (hypot > 53.9 && hypot <= 68.2) {
+            baseTarget =  10.49 * hypot + 1784.589;
+        } else if (hypot > 68.2) {
+            baseTarget = 15.707 * hypot + 1428.783;
         }
 
         baseTarget = Range.clip(baseTarget, 0, 6000);
@@ -128,21 +145,30 @@ public class flywheelSub {
         //leftTarget = baseTarget + voltageOffset + manualOffsetLeft;
 
         // 5) Read sensors independently
-        double effectiveTPR = MOTOR_TICKS_PER_REV * EXTERNAL_GEAR_RATIO;
+        effectiveTPR = MOTOR_TICKS_PER_REV * EXTERNAL_GEAR_RATIO;
 
-        double currentSpeedRight = (rightFlywheel.getVelocity() * 60.0) / effectiveTPR;
+        currentSpeedRight = (rightFlywheel.getVelocity() * 60.0) / effectiveTPR;
         //double currentSpeedLeft = (leftFlywheel.getVelocity() * 60.0) / effectiveTPR;
 
         // 6) Independent PID calculations
-        double pidRight = rightSpinController.calculate(currentSpeedRight, rightTarget);
-        //double pidLeft = leftSpinController.calculate(currentSpeedLeft, leftTarget);
+        shotpid = shotSpinController.calculate(currentSpeedRight, rightTarget);
+        idlepid = idleSpinController.calculate(currentSpeedRight, rightTarget);
+        //double pidLeft = idleSpinController.calculate(currentSpeedLeft, leftTarget);
 
         // 7) Apply power (clip at ±1)
-        double powerRight = Math.max(-1, Math.min(1, pidRight));
+        shotPower = Math.max(-1, Math.min(1, shotpid));
+        idlePower = Math.max(-1, Math.min(1, idlepid));
         //double powerLeft = Math.max(-1, Math.min(1, pidLeft));
 
-        rightFlywheel.setPower(powerRight);
-        //leftFlywheel.setPower(powerLeft);
+        if (rightBumper || leftBumper) {
+            rightFlywheel.setPower(shotPower);
+            leftFlywheel.setPower(shotPower);
+        } else {
+            rightFlywheel.setPower(idlePower);
+            leftFlywheel.setPower(idlePower);
+        }
+
+
     }
 
     /**
@@ -253,6 +279,6 @@ public class flywheelSub {
     public void power0() {
         loopActive = false;
         rightFlywheel.setPower(0);
-        //leftFlywheel.setPower(0);
+        leftFlywheel.setPower(0);
     }
 }

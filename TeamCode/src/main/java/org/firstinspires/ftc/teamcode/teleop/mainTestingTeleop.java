@@ -9,10 +9,14 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.PwmControl;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
+
+import com.seattlesolvers.solverslib.controller.PIDFController;
+import com.qualcomm.robotcore.hardware.ServoImplEx;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
@@ -37,13 +41,13 @@ public class mainTestingTeleop extends LinearOpMode {
     DcMotorEx             backRight     ;
     DcMotorEx             frontLeft     ;
     DcMotorEx             backLeft      ;
-    DcMotorEx             topIntake     ;
+    //DcMotorEx             topIntake     ;
     DcMotorEx             middleIntake  ;
     DcMotorEx             bottomIntake  ;
     DcMotorEx             leftFlywheel  ;
     DcMotorEx             rightFlywheel ;
-    Servo                 turret1       ;
-    Servo                 turret2       ;
+    ServoImplEx           turret1       ;
+    ServoImplEx           turret2       ;
     Servo                 gate          ;
     Servo                 flower        ;
     Servo                 arm           ;
@@ -154,7 +158,7 @@ public class mainTestingTeleop extends LinearOpMode {
         backLeft   = hardwareMap.get(DcMotorEx.class,  "backLeft");
         frontLeft  = hardwareMap.get(DcMotorEx.class,  "frontLeft");
 
-        topIntake    = hardwareMap.get(DcMotorEx.class,  "topIntake");
+        //topIntake    = hardwareMap.get(DcMotorEx.class,  "topIntake");
 
         middleIntake   = hardwareMap.get(DcMotorEx.class,  "middleIntake");
 
@@ -169,11 +173,15 @@ public class mainTestingTeleop extends LinearOpMode {
 
         pip = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
 
-        turret1 = hardwareMap.get(Servo.class, "turret1");
-        turret2 = hardwareMap.get(Servo.class, "turret2");
+        turret1 = hardwareMap.get(ServoImplEx.class, "turret1");
+        turret2 = hardwareMap.get(ServoImplEx.class, "turret2");
 
-        turret1.setDirection(Servo.Direction.REVERSE);
-        turret2.setDirection(Servo.Direction.REVERSE);
+        turret1.setDirection(ServoImplEx.Direction.REVERSE);
+        turret2.setDirection(ServoImplEx.Direction.REVERSE);
+
+        turret1.setPwmRange(new PwmControl.PwmRange(550, 2450));
+        turret2.setPwmRange(new PwmControl.PwmRange(550, 2450));
+
 
         //arm = hardwareMap.get(Servo.class, "arm");
         claw = hardwareMap.get(Servo.class, "claw");
@@ -313,6 +321,7 @@ public class mainTestingTeleop extends LinearOpMode {
                 angleToGoal = Math.atan2(yl, xl);
                 robotHeading = pip.getHeading(AngleUnit.RADIANS);
 
+                // target angle
                 calculatedTurretRad = angleToGoal - robotHeading;
 
                 while (calculatedTurretRad > Math.PI) {
@@ -385,7 +394,7 @@ public class mainTestingTeleop extends LinearOpMode {
                     intakeCmd = 1;
                 }
 
-                topIntake.setPower(intakeCmd);
+                //topIntake.setPower(intakeCmd);
                 middleIntake.setPower(intakeCmd);
                 bottomIntake.setPower(intakeCmd);
 
@@ -406,8 +415,10 @@ public class mainTestingTeleop extends LinearOpMode {
             // Flywheel Update
             fly.hypot = hypot;
             fly.voltage = currentVoltage;
-            //fly.up = gamepad1.b ;
-            //fly.down = gamepad1.a;
+            fly.up = gamepad2.dpad_up;
+            fly.down = gamepad2.dpad_down;
+            fly.rightBumper = gamepad1.right_bumper;
+            fly.leftBumper = gamepad1.left_bumper;
 
             if (gamepad1.x) v.var = 1;
             else if (gamepad1.y) v.var = 0;

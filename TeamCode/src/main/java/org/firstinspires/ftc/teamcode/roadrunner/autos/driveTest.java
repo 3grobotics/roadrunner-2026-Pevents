@@ -31,7 +31,7 @@ public class driveTest extends LinearOpMode {
     DcMotorEx             backRight     ;
     DcMotorEx             frontLeft     ;
     DcMotorEx             backLeft      ;
-    DcMotorEx             topIntake     ;
+    //DcMotorEx             topIntake     ;
     DcMotorEx             middleIntake  ;
     DcMotorEx             bottomIntake  ;
     DcMotorEx             leftFlywheel  ;
@@ -60,6 +60,11 @@ public class driveTest extends LinearOpMode {
     double calculatedTurretRad;
     double finalServoDegrees;
     double offset = 10;
+
+
+    String pathA = "pathA";
+    String pathB = "pathB";
+
 
     boolean hiveNotTipped = false;
     int lastSeenTagId = -1;
@@ -115,9 +120,31 @@ public class driveTest extends LinearOpMode {
             return new branchHivePath(pathA, pathB);
         }
 
+        private class branchHivePath2 implements Action {
+            private final Action pathC;
+            private final Action pathD;
+            private Action chosenPath = null;
+
+            public branchHivePath2(Action pathC, Action pathD) {
+                this.pathC = pathC;
+                this.pathD = pathD;
+            }
+
+            @Override
+            public boolean run(@NonNull TelemetryPacket p) {
+                if (chosenPath == null) {
+                    chosenPath = hiveNotTipped ? pathC : pathD;
+                }
+                return chosenPath.run(p);
+            }
+        }
+        public Action branchHivePath2(Action pathC, Action pathD) {
+            return new branchHivePath2(pathC, pathD);
+        }
+
         private class intake implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                topIntake.setPower(1);
+                //topIntake.setPower(1);
                 middleIntake.setPower(1);
                 bottomIntake.setPower(1);
                 gate.setPosition(.6);
@@ -128,7 +155,7 @@ public class driveTest extends LinearOpMode {
 
         private class fire implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                topIntake.setPower(1);
+                //topIntake.setPower(1);
                 middleIntake.setPower(1);
                 bottomIntake.setPower(1);
                 gate.setPosition(.5);
@@ -139,7 +166,7 @@ public class driveTest extends LinearOpMode {
 
         private class stopFire implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                topIntake.setPower(0);
+                //topIntake.setPower(0);
                 middleIntake.setPower(0);
                 bottomIntake.setPower(0);
                 gate.setPosition(.6);
@@ -233,8 +260,8 @@ public class driveTest extends LinearOpMode {
 
         private class firstShotTurret2 implements Action {
             @Override public boolean run(@NonNull TelemetryPacket p) {
-                turret1.setPosition(.5);
-                turret2.setPosition(.5);
+                turret1.setPosition(0.26585);
+                turret2.setPosition(0.26585);
                 return false;
             }
         }
@@ -296,7 +323,7 @@ public class driveTest extends LinearOpMode {
     public void runOpMode() throws InterruptedException {
 
         fly           = new flywheelSub(hardwareMap);
-        topIntake     = hardwareMap.get(DcMotorEx.class, "topIntake");
+        //topIntake     = hardwareMap.get(DcMotorEx.class, "//topIntake");
         middleIntake  = hardwareMap.get(DcMotorEx.class, "middleIntake");
         bottomIntake  = hardwareMap.get(DcMotorEx.class, "bottomIntake");
         rightFlywheel = hardwareMap.get(DcMotorEx.class, "rightFlywheel");
@@ -321,9 +348,47 @@ public class driveTest extends LinearOpMode {
         /* ---- Poses & Actions ---- */
         Pose2d initialPose = new Pose2d(62, -16, Math.toRadians(270));
         Pose2d splitPose   = new Pose2d(62, -16, Math.toRadians(180));
+        Pose2d splitPose2  = new Pose2d(62, -16, Math.toRadians(180));
 
         MecanumDrive drive = new MecanumDrive(hardwareMap, initialPose);
         Robot robot = new Robot(drive);
+
+        Action secondSuccess = drive.actionBuilder(splitPose)
+                .setTangent(Math.toRadians(170))
+                .splineToSplineHeading(new Pose2d(42, -12, Math.toRadians(0)), Math.toRadians(180))
+                .setTangent(Math.toRadians(180))
+                .splineToLinearHeading(new Pose2d(-20, -12, Math.toRadians(0)), Math.toRadians(180))
+                .setTangent(Math.toRadians(180))
+                .splineToSplineHeading(new Pose2d(-62, -12, Math.toRadians(0)), Math.toRadians(190))
+                .waitSeconds(1)
+                .stopAndAdd(robot.fire())
+                .waitSeconds(1)
+                .stopAndAdd(robot.stopFire())
+
+                // park
+                .setTangent(Math.toRadians(20))
+                .splineToLinearHeading(new Pose2d(-45, -12, Math.toRadians(270)), Math.toRadians(0))
+                .setTangent(Math.toRadians(315))
+                .splineToLinearHeading(new Pose2d(-34, -34, Math.toRadians(270)), Math.toRadians(315))
+                .setTangent(Math.toRadians(315))
+                .splineToLinearHeading(new Pose2d(-22, -55, Math.toRadians(270)), Math.toRadians(270))
+                .build();
+
+        Action secondFailure = drive.actionBuilder(splitPose)
+                .waitSeconds(1)
+                .stopAndAdd(robot.fire())
+                .waitSeconds(1)
+                .stopAndAdd(robot.stopFire())
+
+                .afterDisp(10, robot.flowerDown())
+                .setTangent(Math.toRadians(225))
+                .splineToSplineHeading(new Pose2d(52, -21, Math.toRadians(225)), Math.toRadians(225))
+                .setTangent(Math.toRadians(225))
+                .splineToSplineHeading(new Pose2d(40, -30, Math.toRadians(225)), Math.toRadians(225))
+                .setTangent(Math.toRadians(225))
+                .splineToLinearHeading(new Pose2d(-22, -55, Math.toRadians(180)), Math.toRadians(180))
+
+                .build();
 
         // PATH A (hiveNotTipped == true):
         // 1. Goes back to +X shooting pose (62.8, -40) and shoots the 1st flower to make the hive tip
@@ -380,12 +445,17 @@ public class driveTest extends LinearOpMode {
                 .afterDisp(10, robot.stopFire())
                 .afterDisp(5, robot.lowerVelocity2())
 
+                // goes to other side (-x)
                 .setTangent(Math.toRadians(170))
                 .splineToLinearHeading(new Pose2d(-20, -12, Math.toRadians(180)), Math.toRadians(180))
                 .setTangent(Math.toRadians(180))
                 .splineToSplineHeading(new Pose2d(-40, -12, Math.toRadians(180)), Math.toRadians(180))
+
+
+                // to the firing spot at the flower
+                .afterDisp(5, robot.flowerDown())
                 .setTangent(Math.toRadians(180))
-                .splineToLinearHeading(new Pose2d(-55, -24, Math.toRadians(180)), Math.toRadians(190))
+                .splineToLinearHeading(new Pose2d(-50, -24, Math.toRadians(180)), Math.toRadians(190))
 
                 .waitSeconds(1)
                 .stopAndAdd(robot.fire())
@@ -393,37 +463,51 @@ public class driveTest extends LinearOpMode {
                 .stopAndAdd(robot.stopFire())
                 .stopAndAdd(robot.thirdShotTurret())
 
-                .afterDisp(15, robot.flowerDown())
-                .afterDisp(20, robot.intake())
-                .afterDisp(20, robot.lowerVelocity3())
-
-                .setTangent(Math.toRadians(0))
-                .splineToLinearHeading(new Pose2d(-48, -24, Math.toRadians(180)), Math.toRadians(0))
-
+                // goes in for the pollen from the flower and then fires
+                .afterDisp(0, robot.intake())
                 .setTangent(Math.toRadians(180))
                 .splineToLinearHeading(new Pose2d(-55, -24, Math.toRadians(180)), Math.toRadians(180))
-
-                .setTangent(Math.toRadians(0))
-                .splineToSplineHeading(new Pose2d(-48, -24, Math.toRadians(270)), Math.toRadians(0))
-
-                // SCAN
-                .setTangent(Math.toRadians(0))
-                .splineToLinearHeading(new Pose2d(-62.8, -12, Math.toRadians(0)), Math.toRadians(225))
-                // SCAN
+                .waitSeconds(.75)
+                .stopAndAdd(robot.fire())
+                .waitSeconds(1)
+                .stopAndAdd(robot.stopFire())
 
 
+
+                // goes to last flower pickup
+                .afterDisp(30, robot.flowerDown())
+                .afterDisp(40, robot.intake())
                 .setTangent(Math.toRadians(0))
-                .splineToLinearHeading(new Pose2d(-41, -40, Math.toRadians(0)), Math.toRadians(270))
-                .setTangent(Math.toRadians(0))
+                .splineToLinearHeading(new Pose2d(-41, -35, Math.toRadians(270)), Math.toRadians(315))
+                .setTangent(Math.toRadians(315))
                 .splineToSplineHeading(new Pose2d(22, -58, Math.toRadians(270)), Math.toRadians(280))
                 .setTangent(Math.toRadians(0))
                 .splineToLinearHeading(new Pose2d(26, -58, Math.toRadians(270)), Math.toRadians(0))
-
-
                 .setTangent(Math.toRadians(180))
                 .splineToLinearHeading(new Pose2d(24, -58, Math.toRadians(270)), Math.toRadians(180))
 
+                // back to scan or shoot
+                .setTangent(Math.toRadians(45))
+                .splineToSplineHeading(new Pose2d(34, -45, Math.toRadians(225)), Math.toRadians(45))
+                .setTangent(Math.toRadians(45))
+                .splineToLinearHeading(new Pose2d(46, -32, Math.toRadians(225)), Math.toRadians(45))
+                .setTangent(Math.toRadians(45))
+                .splineToSplineHeading(splitPose2, Math.toRadians(45))
+                .waitSeconds(.5)
+                // 3. Check Limelight while the view is clear
+                .stopAndAdd(robot.checkHive())
+                // 4. Put the flower back up before driving!
+                .waitSeconds(.5)
+
+                .stopAndAdd(robot.branchHivePath(secondFailure, secondSuccess))
+
+
+
                 .build();
+
+
+
+
 
         // Main Path
         Action TEST = drive.actionBuilder(initialPose)
@@ -455,6 +539,7 @@ public class driveTest extends LinearOpMode {
 
                 .afterDisp(5, robot.stopFire())
                 .afterDisp(5, robot.flowerDown())
+                .afterDisp(5, robot.firstShotTurret())
                 .setTangent(Math.toRadians(90))
                 .splineToLinearHeading(splitPose, Math.toRadians(0))
 
@@ -491,7 +576,9 @@ public class driveTest extends LinearOpMode {
                         TEST,
                         robot.flywheelUp(),
                         (telemetryPacket) -> {
-                            telemetry.addData("Hive Not Tipped (Post-1st Shot)", hiveNotTipped);
+
+                            telemetry.addData("path", hiveNotTipped ? pathA : pathB);
+                            telemetry.addData("Hive Not Tipped", hiveNotTipped);
                             telemetry.addData("Last Seen Tag ID", lastSeenTagId);
                             telemetry.addData("Distance from goal", hypot);
                             telemetry.addData("Fake distance from goal", riggedHypot);

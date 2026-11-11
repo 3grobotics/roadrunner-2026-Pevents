@@ -32,16 +32,35 @@ public class tuninglinearequations extends LinearOpMode {
     // --- Hardware Constants ---
     public static double MOTOR_TICKS_PER_REV = 28.0;
     public static double EXTERNAL_GEAR_RATIO = 1.333333;
+    double effectiveTPR = MOTOR_TICKS_PER_REV * EXTERNAL_GEAR_RATIO;
 
     // --- FTC Dashboard Live Variables ---
-    public double kP = 0.001;
-    public double kI = 0.0001;
-    public double kD = 0.00001;
-    public double kF = 0.000195;
+    public static double shotKp = 0.0011;
+    public static double shotKi = 0.035;
+    public static double shotKd = 0;
+    public static double shotKf = 0.00029;
+
+    public static double idleKp = 0.0006;
+    public static double idleKi = 0;
+    public static double idleKd = 0;
+    public static double idleKf = 0.000263;
 
 
 
-    public PIDFController flywheelController = new PIDFController(kP, kI, kD, kF);
+
+    double shotpid;
+    double idlepid;
+    double shotPower;
+    double idlePower;
+    double currentSpeedRight;
+    public volatile double rightTarget = 0;
+
+
+
+
+    public PIDFController shotSpinController = new PIDFController(shotKp, shotKi, shotKd, shotKf);
+    public PIDFController idleSpinController = new PIDFController(idleKp, idleKi, idleKd, idleKf);
+
     private FtcDashboard dashboard;
     boolean triggerPressed;
     double fireIntakeCmd;
@@ -71,7 +90,7 @@ public class tuninglinearequations extends LinearOpMode {
 
 
 
-        topIntake    = hardwareMap.get(DcMotorEx.class,  "topIntake");
+        //topIntake    = hardwareMap.get(DcMotorEx.class,  "topIntake");
 
         middleIntake   = hardwareMap.get(DcMotorEx.class,  "middleIntake");
 
@@ -79,7 +98,7 @@ public class tuninglinearequations extends LinearOpMode {
 
 
         rightFlywheel = hardwareMap.get(DcMotorEx.class,  "rightFlywheel");
-        //leftFlywheel  = hardwareMap.get(DcMotorEx.class,  "leftFlywheel");
+        leftFlywheel  = hardwareMap.get(DcMotorEx.class,  "leftFlywheel");
         gate = hardwareMap.get(Servo.class,  "gate");
 
         // --- Servo & Motor Configurations ---
@@ -91,6 +110,12 @@ public class tuninglinearequations extends LinearOpMode {
         rightFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         rightFlywheel.setDirection(DcMotor.Direction.REVERSE);
         rightFlywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+
+        leftFlywheel.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+
+        leftFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        leftFlywheel.setDirection(DcMotor.Direction.REVERSE);
+        leftFlywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
 
 
 
@@ -198,7 +223,7 @@ public class tuninglinearequations extends LinearOpMode {
                 claw.setPosition(clawPos);
             }
             */
-             
+
 
             // --- Flywheel PIDF Control ---
             {
@@ -215,13 +240,25 @@ public class tuninglinearequations extends LinearOpMode {
                 prevaa = aa;
                 prevyy = yy;
 
-                flywheelController.setPIDF(kP, kI, kD, kF);
-                double effectiveTPR = MOTOR_TICKS_PER_REV * EXTERNAL_GEAR_RATIO;
+                currentSpeedRight = (rightFlywheel.getVelocity() * 60.0) / effectiveTPR;
 
-                double currentRPM = (rightFlywheel.getVelocity() * 60) / effectiveTPR;
-                double pid = flywheelController.calculate(currentRPM, v);
-                double power = Math.max(-1, Math.min(1, pid));
-                rightFlywheel.setPower(power);
+
+                shotpid = shotSpinController.calculate(currentSpeedRight, v);
+                idlepid = idleSpinController.calculate(currentSpeedRight, v);
+                //double pidLeft = idleSpinController.calculate(currentSpeedLeft, leftTarget);
+
+                // 7) Apply power (clip at ±1)
+                shotPower = Math.max(-1, Math.min(1, shotpid));
+                idlePower = Math.max(-1, Math.min(1, idlepid));
+                //double powerLeft = Math.max(-1, Math.min(1, pidLeft));
+
+                if (gamepad1.left_bumper || gamepad1.right_bumper) {
+                    rightFlywheel.setPower(idlePower);
+                    leftFlywheel.setPower (idlePower);
+                } else {
+                    rightFlywheel.setPower(idlePower);
+                    leftFlywheel.setPower (idlePower);
+                }
             }
 
             /* intake stuff */ {
@@ -234,7 +271,7 @@ public class tuninglinearequations extends LinearOpMode {
                     intakeCmd = 1.0;
                 }
 
-                topIntake.setPower(intakeCmd);
+                //topIntake.setPower(intakeCmd);
                 middleIntake.setPower(intakeCmd);
                 bottomIntake.setPower(intakeCmd);
 
@@ -256,20 +293,20 @@ public class tuninglinearequations extends LinearOpMode {
 
             switch (currentTiltState) {
                 case BLUE:
-                    target_x = 25;
-                    target_y = 14;
+                    target_x = 18;
+                    target_y = 13;
                     break;
                 case BLUE_TILTED:
-                    target_x = -25;
-                    target_y = 14;
+                    target_x = -18;
+                    target_y = 13;
                     break;
                 case RED:
-                    target_x = 25;
-                    target_y = -14;
+                    target_x = 18;
+                    target_y = -13;
                     break;
                 case RED_TILTED:
-                    target_x = -25;
-                    target_y = -14;
+                    target_x = -18;
+                    target_y = -13;
                     break;
             }
 

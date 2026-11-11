@@ -7,7 +7,7 @@ import com.qualcomm.robotcore.hardware.PwmControl;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.ServoImplEx;
 
-@TeleOp(name="set servo .05", group="Linear OpMode")
+@TeleOp(name="set servo .26585", group="Linear OpMode")
 //@Disabled
 public class setServoP1 extends LinearOpMode {
 
@@ -31,8 +31,8 @@ public class setServoP1 extends LinearOpMode {
         t1.setPwmRange(new PwmControl.PwmRange(550, 2450));
         t2.setPwmRange(new PwmControl.PwmRange(550, 2450));
 
-        t1.setPosition(0.05);
-        t2.setPosition(0.05);
+        t1.setPosition(0.26585);
+        t2.setPosition(0.26585);
         //h.setPosition (0.05);
             //telemetry.addData("hood position", h.getPosition());
             telemetry.update();
