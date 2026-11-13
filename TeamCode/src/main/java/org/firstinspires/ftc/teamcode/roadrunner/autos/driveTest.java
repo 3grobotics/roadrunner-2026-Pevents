@@ -353,13 +353,14 @@ public class driveTest extends LinearOpMode {
         MecanumDrive drive = new MecanumDrive(hardwareMap, initialPose);
         Robot robot = new Robot(drive);
 
-        Action secondSuccess = drive.actionBuilder(splitPose)
-                .setTangent(Math.toRadians(170))
-                .splineToSplineHeading(new Pose2d(42, -12, Math.toRadians(0)), Math.toRadians(180))
+        Action secondFailure = drive.actionBuilder(splitPose)
+                .afterDisp(0, robot.stopFire())
+                .setTangent(Math.toRadians(150))
+                .splineToSplineHeading(new Pose2d(42, -12, Math.toRadians (180)), Math.toRadians(180))
                 .setTangent(Math.toRadians(180))
-                .splineToLinearHeading(new Pose2d(-20, -12, Math.toRadians(0)), Math.toRadians(180))
+                .splineToLinearHeading(new Pose2d(-20, -12, Math.toRadians(180)), Math.toRadians(180))
                 .setTangent(Math.toRadians(180))
-                .splineToSplineHeading(new Pose2d(-62, -12, Math.toRadians(0)), Math.toRadians(190))
+                .splineToSplineHeading(new Pose2d(-56, -12, Math.toRadians(180)), Math.toRadians(190))
                 .waitSeconds(1)
                 .stopAndAdd(robot.fire())
                 .waitSeconds(1)
@@ -374,7 +375,7 @@ public class driveTest extends LinearOpMode {
                 .splineToLinearHeading(new Pose2d(-22, -55, Math.toRadians(270)), Math.toRadians(270))
                 .build();
 
-        Action secondFailure = drive.actionBuilder(splitPose)
+        Action secondSuccess = drive.actionBuilder(splitPose)
                 .waitSeconds(1)
                 .stopAndAdd(robot.fire())
                 .waitSeconds(1)
@@ -477,12 +478,13 @@ public class driveTest extends LinearOpMode {
                 // goes to last flower pickup
                 .afterDisp(30, robot.flowerDown())
                 .afterDisp(40, robot.intake())
+
                 .setTangent(Math.toRadians(0))
-                .splineToLinearHeading(new Pose2d(-41, -35, Math.toRadians(270)), Math.toRadians(315))
+                .splineToSplineHeading(new Pose2d(-41, -26, Math.toRadians(315)), Math.toRadians(315))
                 .setTangent(Math.toRadians(315))
                 .splineToSplineHeading(new Pose2d(22, -58, Math.toRadians(270)), Math.toRadians(280))
                 .setTangent(Math.toRadians(0))
-                .splineToLinearHeading(new Pose2d(26, -58, Math.toRadians(270)), Math.toRadians(0))
+                .splineToSplineHeading(new Pose2d(26, -58, Math.toRadians(270)), Math.toRadians(0))
                 .setTangent(Math.toRadians(180))
                 .splineToLinearHeading(new Pose2d(24, -58, Math.toRadians(270)), Math.toRadians(180))
 
@@ -499,7 +501,7 @@ public class driveTest extends LinearOpMode {
                 // 4. Put the flower back up before driving!
                 .waitSeconds(.5)
 
-                .stopAndAdd(robot.branchHivePath(secondFailure, secondSuccess))
+                .stopAndAdd(robot.branchHivePath2(secondSuccess, secondFailure))
 
 
 
@@ -513,7 +515,7 @@ public class driveTest extends LinearOpMode {
         Action TEST = drive.actionBuilder(initialPose)
                 .stopAndAdd(robot.firstShotTurret2())
                 .stopAndAdd(robot.lowerVelocity())
-                .waitSeconds(3)
+                .waitSeconds(2)
                 .stopAndAdd(robot.fire())
                 .waitSeconds(1)
                 .stopAndAdd(robot.stopFire())
@@ -527,11 +529,11 @@ public class driveTest extends LinearOpMode {
                 .splineToSplineHeading(new Pose2d(55, -60, Math.toRadians(0)), Math.toRadians(315))
 
                 .setTangent(Math.toRadians(315))
-                .splineToLinearHeading(new Pose2d(61, -62, Math.toRadians(0)), Math.toRadians(0))
+                .splineToLinearHeading(new Pose2d(61, -63, Math.toRadians(0)), Math.toRadians(0))
                 .setTangent(Math.toRadians(180))
-                .splineToLinearHeading(new Pose2d(57, -62, Math.toRadians(0)), Math.toRadians(180))
+                .splineToLinearHeading(new Pose2d(57, -63, Math.toRadians(0)), Math.toRadians(180))
                 .setTangent(Math.toRadians(0))
-                .splineToLinearHeading(new Pose2d(61, -62, Math.toRadians(0)), Math.toRadians(0))
+                .splineToLinearHeading(new Pose2d(61, -63, Math.toRadians(0)), Math.toRadians(0))
 
                 .setTangent(Math.toRadians(180))
                 .splineToLinearHeading(new Pose2d(57, -62, Math.toRadians(0)), Math.toRadians(180))

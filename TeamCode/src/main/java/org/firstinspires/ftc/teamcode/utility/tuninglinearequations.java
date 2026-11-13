@@ -5,6 +5,7 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
@@ -31,7 +32,7 @@ public class tuninglinearequations extends LinearOpMode {
     Servo                 claw          ;
     // --- Hardware Constants ---
     public static double MOTOR_TICKS_PER_REV = 28.0;
-    public static double EXTERNAL_GEAR_RATIO = 1.333333;
+    public static double EXTERNAL_GEAR_RATIO = 1;
     double effectiveTPR = MOTOR_TICKS_PER_REV * EXTERNAL_GEAR_RATIO;
 
     // --- FTC Dashboard Live Variables ---
@@ -108,7 +109,7 @@ public class tuninglinearequations extends LinearOpMode {
         rightFlywheel.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
 
         rightFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        rightFlywheel.setDirection(DcMotor.Direction.REVERSE);
+        rightFlywheel.setDirection(DcMotor.Direction.FORWARD);
         rightFlywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
 
         leftFlywheel.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -231,10 +232,10 @@ public class tuninglinearequations extends LinearOpMode {
                 boolean yy = gamepad1.y;
 
                 if (aa && !prevaa && !yy) {
-                    v = Range.clip(v + 50, -7000, 7000.0);
+                    v = Range.clip(v + 25, -7000, 7000.0);
                 }
                 if (yy && !prevyy && !aa) {
-                    v = Range.clip(v - 50, -7000, 7000.0);
+                    v = Range.clip(v - 25, -7000, 7000.0);
                 }
 
                 prevaa = aa;

@@ -94,7 +94,7 @@ public class flywheelSub {
 
         // CHECK YOUR BUILD: If these are side-by-side flywheels, one usually needs
         // to be FORWARD and the other REVERSE to feed a piece through.
-        rightFlywheel.setDirection(DcMotorEx.Direction.REVERSE);
+        rightFlywheel.setDirection(DcMotorEx.Direction.FORWARD);
         leftFlywheel.setDirection(DcMotorEx.Direction.REVERSE);
     }
 

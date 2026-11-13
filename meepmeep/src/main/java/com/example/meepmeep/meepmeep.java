@@ -66,11 +66,11 @@ public class meepmeep {
 
 
                 .setTangent(Math.toRadians(0))
-                .splineToLinearHeading(new Pose2d(-41, -35, Math.toRadians(270)), Math.toRadians(315))
+                .splineToSplineHeading(new Pose2d(-41, -26, Math.toRadians(315)), Math.toRadians(315))
                 .setTangent(Math.toRadians(315))
                 .splineToSplineHeading(new Pose2d(22, -58, Math.toRadians(270)), Math.toRadians(280))
                 .setTangent(Math.toRadians(0))
-                .splineToLinearHeading(new Pose2d(26, -58, Math.toRadians(270)), Math.toRadians(0))
+                .splineToSplineHeading(new Pose2d(26, -58, Math.toRadians(270)), Math.toRadians(0))
 
 
                 .setTangent(Math.toRadians(180))
@@ -83,35 +83,36 @@ public class meepmeep {
                 .splineToLinearHeading(new Pose2d(46, -32, Math.toRadians(225)), Math.toRadians(45))
                 .setTangent(Math.toRadians(45))
                 .splineToSplineHeading(new Pose2d(62, -16, Math.toRadians(180)), Math.toRadians(45))
+
                 // scan
                 // if tipped
 
-                /*.setTangent(Math.toRadians(170))
-               .splineToSplineHeading(new Pose2d(42, -12, Math.toRadians(0)), Math.toRadians(180))
+                .setTangent(Math.toRadians(150))
+               .splineToSplineHeading(new Pose2d(42, -12, Math.toRadians(180)), Math.toRadians(180))
                .setTangent(Math.toRadians(180))
-               .splineToLinearHeading(new Pose2d(-20, -12, Math.toRadians(0)), Math.toRadians(180))
+               .splineToLinearHeading(new Pose2d(-20, -12, Math.toRadians(180)), Math.toRadians(180))
                .setTangent(Math.toRadians(180))
-               .splineToSplineHeading(new Pose2d(-62, -12, Math.toRadians(0)), Math.toRadians(190))
+               .splineToSplineHeading(new Pose2d(-62, -12, Math.toRadians(180)), Math.toRadians(190))
 
                .setTangent(Math.toRadians(20))
                .splineToLinearHeading(new Pose2d(-45, -12, Math.toRadians(270)), Math.toRadians(0))
+               .setTangent(Math.toRadians(0))
+               .splineToSplineHeading(new Pose2d(-34, -34, Math.toRadians(270)), Math.toRadians(315))
                .setTangent(Math.toRadians(315))
-               .splineToLinearHeading(new Pose2d(-34, -34, Math.toRadians(270)), Math.toRadians(315))
-               .setTangent(Math.toRadians(315))
-               .splineToLinearHeading(new Pose2d(-22, -55, Math.toRadians(270)), Math.toRadians(270))   */
-
+               .splineToLinearHeading(new Pose2d(-22, -55, Math.toRadians(270)), Math.toRadians(270))
+/**/
 
                 // if not tipped
 
                 // fire
 
                 // flower down
-                .setTangent(Math.toRadians(225))
+               /* .setTangent(Math.toRadians(225))
                 .splineToSplineHeading(new Pose2d(52, -21, Math.toRadians(225)), Math.toRadians(225))
                 .setTangent(Math.toRadians(225))
                 .splineToSplineHeading(new Pose2d(40, -30, Math.toRadians(225)), Math.toRadians(225))
                 .setTangent(Math.toRadians(225))
-                .splineToLinearHeading(new Pose2d(-22, -55, Math.toRadians(180)), Math.toRadians(180))
+                .splineToLinearHeading(new Pose2d(-22, -55, Math.toRadians(180)), Math.toRadians(180))*/
 
 
 
